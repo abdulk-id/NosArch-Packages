@@ -1,0 +1,48 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: json https://cursor.com/api/download?platform=linux-x64&releaseTrack=stable version
+
+pkgname=cursor-desktop-nosarch
+pkgdesc="AI-First Coding environment"
+pkgver=3.23.12
+pkgrel=1
+url="https://cursor.com"
+license=('LicenseRef-Cursor-EULA')
+
+arch=('x86_64')
+depends=('alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-libs' 'glib2' 'gtk3'
+         'libxcb' 'libx11' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon'
+         'libxkbfile' 'libxrandr' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'xdg-utils')
+provides=('cursor')
+conflicts=('cursor' 'cursor-bin' 'cursor-appimage' 'cursor-nosarch')
+options=('!strip' '!debug')
+_commit=2d29876d567da1607532b23bbf2cd5ddbca496fe
+source=(
+    "$pkgname-$pkgver.deb::https://downloads.cursor.com/production/$_commit/linux/x64/deb/amd64/deb/cursor_${pkgver}_amd64.deb"
+    "cursor-agent-no-selfinstall.patch"
+)
+sha256sums=('4b38d23926c72f2080e2ba108593e38f3688312464d70adc9088db63a53c0346'
+            'fd87fda0714161b6029ca001b6add364d7f1d39c4792e60359985036b4b65017')
+
+package() {
+    # Unpack the Debian payload with libarchive (pacman's own dependency; it reads .xz natively),
+    # preserving upstream's FHS layout: /usr/share/cursor, the desktop entries, the pixmap icon
+    # and the shipped bash completion.
+    bsdtar -xf "$srcdir/$pkgname-$pkgver.deb" -C "$srcdir"
+    bsdtar -xf "$srcdir/data.tar.xz" -C "$pkgdir"
+
+    # The deb's postinst never runs under pacman, and it is what creates this symlink.
+    install -d "$pkgdir/usr/bin"
+    ln -s /usr/share/cursor/bin/cursor "$pkgdir/usr/bin/cursor"
+
+    # The launcher's `cursor agent` would otherwise install cursor-agent with
+    # `curl https://cursor.com/install | bash` into ~/.local/bin. NosArch pins and audits every
+    # package, so route to an installed cursor-agent (cursor-cli-nosarch first) instead.
+    patch --directory="$pkgdir" --strip=1 --no-backup-if-mismatch \
+        --input="$srcdir/cursor-agent-no-selfinstall.patch"
+
+    # LicenseRef-* obliges us to ship the license under /usr/share/licenses/$pkgname/, and
+    # upstream keeps its LICENSE.txt inside the app tree.
+    install -Dm644 "$pkgdir/usr/share/cursor/resources/app/LICENSE.txt" \
+        "$pkgdir/usr/share/licenses/$pkgname/LICENSE.txt"
+}

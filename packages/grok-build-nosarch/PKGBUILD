@@ -1,0 +1,53 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: text https://x.ai/cli/stable
+
+pkgname=grok-build-nosarch
+pkgdesc="Grok Build - xAI's terminal-based AI coding agent"
+pkgver=1.0.46
+pkgrel=1
+url="https://x.ai/cli"
+license=('Apache-2.0')
+
+arch=('x86_64')
+# The release binary is fully statically linked (no ELF NEEDED entries), so it pulls in no shared libraries at runtime.
+depends=()
+provides=('grok')
+conflicts=('grok' 'grok-build' 'grok-build-bin')
+options=('!strip' '!debug')
+source=(
+    "grok-$pkgver::https://x.ai/cli/grok-$pkgver-linux-x86_64"
+    "LICENSE::https://raw.githubusercontent.com/xai-org/grok-build/main/LICENSE"
+)
+sha256sums=(
+    '41626a53292324140b92556b9d42ff5542e3dcd04aff85eafb8689dd4adb44fc'
+    '116f7778b9802e569b7fa3a532b17bd80eb13c67837def01eed093d4ea472f28'
+)
+
+build() {
+    chmod +x "$srcdir/grok-$pkgver"
+
+    # Shell completions are best-effort. package() only installs the files that actually came out non-empty.
+    "$srcdir/grok-$pkgver" completions bash > "$srcdir/grok.bash" || true
+    "$srcdir/grok-$pkgver" completions zsh > "$srcdir/_grok" || true
+    "$srcdir/grok-$pkgver" completions fish > "$srcdir/grok.fish" || true
+}
+
+package() {
+    install -Dm755 "$srcdir/grok-$pkgver" "$pkgdir/opt/$pkgname/grok"
+
+    install -d "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/grok" "$pkgdir/usr/bin/grok"
+
+    if [[ -s "$srcdir/grok.bash" ]]; then
+        install -Dm644 "$srcdir/grok.bash" "$pkgdir/usr/share/bash-completion/completions/grok"
+    fi
+    if [[ -s "$srcdir/_grok" ]]; then
+        install -Dm644 "$srcdir/_grok" "$pkgdir/usr/share/zsh/site-functions/_grok"
+    fi
+    if [[ -s "$srcdir/grok.fish" ]]; then
+        install -Dm644 "$srcdir/grok.fish" "$pkgdir/usr/share/fish/vendor_completions.d/grok.fish"
+    fi
+
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

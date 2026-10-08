@@ -1,0 +1,78 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: json https://cursor.com/api/agent-cli-version version
+
+pkgname=cursor-cli-nosarch
+pkgdesc="Cursor Agent - Cursor's terminal-based AI coding agent"
+pkgver=2026.10.01.e373342
+pkgrel=2
+url="https://cursor.com/cli"
+license=('LicenseRef-Cursor-EULA')
+
+arch=('x86_64')
+depends=('bash' 'gcc-libs' 'glibc' 'zlib')
+provides=('cursor-cli')
+conflicts=('cursor-cli')
+options=('!strip' '!debug')
+# Upstream versions are `2026.09.26-dd393fe` (date + build hash) and pkgver may not contain hyphens, so pkgver carries
+# the hash after a dot and this turns it back into the form the download URL uses.
+_upstream_ver="${pkgver%.*}-${pkgver##*.}"
+source=(
+    "agent-cli-package.tar.gz::https://downloads.cursor.com/lab/$_upstream_ver/linux/x64/agent-cli-package.tar.gz"
+    "Cursor-TOS"
+    "pin-channel.js"
+)
+sha256sums=(
+    'a79726c6e644520e993970be4c45775a6889802b67abe461a677a53219ae28e8'
+    'SKIP'
+    'SKIP'
+)
+
+package() {
+    install -d "$pkgdir/opt/$pkgname"
+    cp -a --no-preserve=ownership "$srcdir/dist-package/." "$pkgdir/opt/$pkgname/"
+
+    # The launcher execs /opt/$pkgname/<invoked name>, and this hop gives `agent` a path whose basename is `agent`.
+    # The wrapper exports that basename as CURSOR_INVOKED_AS, which is what the CLI prints in its help banner, so
+    # Cursor's documented `agent ...` works on this package.
+    ln -s cursor-agent "$pkgdir/opt/$pkgname/agent"
+
+    # `update`/`upgrade` would hand the install to the vendor's own installer, and background updates
+    # (installCursorAgent) drop a new version plus ~/.local/bin shims that can shadow /usr/bin. Refuse the commands by
+    # name, and take away the execute bit the updater needs to create its version directory. Best-effort: every path a
+    # user reaches the CLI through goes through here, but nothing stops the user from running the wrapper under /opt.
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/cursor-agent" <<'EOF'
+#!/bin/sh
+set -eu
+
+name="$(basename "$0")"
+case "$name" in
+    agent | cursor-agent) ;;
+    *) name=cursor-agent ;;
+esac
+
+case "${1:-}" in
+    update | upgrade)
+        echo "cursor-agent $1 is blocked: this install is managed by pacman (cursor-cli-nosarch)." >&2
+        echo "Update or remove the package with pacman instead." >&2
+        exit 1
+        ;;
+esac
+
+versions_dir="${HOME:-}/.local/share/cursor-agent/versions"
+mkdir -p "$versions_dir" 2>/dev/null || true
+chmod -x "$versions_dir" 2>/dev/null || true
+
+# `static` is upstream's channel for packaged installs: it short-circuits every update path (the TUI's /update, the
+# background check after startup, and the update command) before any network call. Best-effort: it only fills the key
+# in when the user has not picked a channel with `agent set-channel`, and any failure leaves upstream behaviour intact.
+"/opt/cursor-cli-nosarch/node" /usr/lib/cursor-cli-nosarch/pin-channel.js >/dev/null 2>&1 || true
+
+exec "/opt/cursor-cli-nosarch/$name" "$@"
+EOF
+
+    ln -s cursor-agent "$pkgdir/usr/bin/agent"
+
+    install -Dm644 "$srcdir/pin-channel.js" "$pkgdir/usr/lib/$pkgname/pin-channel.js"
+    install -Dm644 "$srcdir/Cursor-TOS" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

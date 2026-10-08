@@ -1,0 +1,48 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github google-antigravity/antigravity-cli
+
+pkgname=antigravity-cli-nosarch
+pkgdesc="Antigravity CLI - Google's terminal AI coding agent"
+pkgver=1.2.16
+pkgrel=1
+url="https://antigravity.google/product/antigravity-cli"
+license=('LicenseRef-Antigravity-CLI')
+
+arch=('x86_64')
+depends=('bash' 'glibc')
+# bash: /bin/sh for the /usr/bin/agy wrapper
+provides=('antigravity-cli' 'agy')
+conflicts=('antigravity-cli' 'agy')
+options=('!strip' '!debug')
+source=(
+    "agy_cli_linux_x64.tar.gz::https://github.com/google-antigravity/antigravity-cli/releases/download/$pkgver/agy_cli_linux_x64.tar.gz"
+    "LICENSE"
+)
+sha256sums=(
+    'd4247430e04cebdbe1ca93d9ccb483cd2f3daeb4cdb0ace5a71cd130e0bdab84'
+    'SKIP'
+)
+
+package() {
+    install -Dm755 "$srcdir/antigravity" "$pkgdir/opt/$pkgname/agy"
+
+    # Best-effort self-update block: the CLI runs a background auto-updater during regular runs.
+    # AGY_CLI_DISABLE_AUTO_UPDATE is Google's documented opt-out. A manual `agy update` is blocked by a thin wrapper.
+    # Keeping the real binary under root-owned /opt is the second block: a user-level self-replace cannot write there.
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/agy" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+    update)
+        echo "agy update is blocked: this install is managed by pacman (antigravity-cli-nosarch)." >&2
+        echo "Update or remove the package with pacman instead." >&2
+        exit 1
+        ;;
+esac
+
+export AGY_CLI_DISABLE_AUTO_UPDATE=true
+exec /opt/antigravity-cli-nosarch/agy "$@"
+EOF
+
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

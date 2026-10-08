@@ -1,0 +1,41 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github zeronsh/zeron
+
+pkgname=zeron-nosarch
+pkgdesc="A native control plane for Claude Code, Codex, Cursor, Devin and other coding agents."
+pkgver=0.2.102
+pkgrel=2  # Add `alsa-lib` to depends
+url="https://zeron.sh/"
+license=('MIT')
+
+arch=('x86_64')
+depends=('alsa-lib' 'glibc' 'hicolor-icon-theme' 'libgcc' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11')
+provides=('zeron')
+options=('!strip' '!debug')
+source=(
+    "zeron-$pkgver-linux-x86_64.tar.gz::https://github.com/zeronsh/zeron/releases/download/v$pkgver/zeron-$pkgver-linux-x86_64.tar.gz"
+    "LICENSE::https://raw.githubusercontent.com/zeronsh/zeron/v$pkgver/LICENSE"
+)
+sha256sums=(
+    '269920182e93eb678b1545acafbd90480f1b5ab387083f391cc6adf5bfab13e8'
+    'e776600f641baae3fd37387829b40fe2d7c12d01785dc8b846658b7cbb0342e3'
+)
+
+prepare() {
+    tar --extract --file "zeron-$pkgver-linux-x86_64.tar.gz"
+}
+
+package() {
+    install -Dm755 "$srcdir/zeron-$pkgver-linux-x86_64/zeron" "$pkgdir/usr/bin/zeron"
+    install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/zeron.desktop" "$pkgdir/usr/share/applications/zeron.desktop"
+    install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/zeron.png" "$pkgdir/usr/share/icons/hicolor/512x512/apps/zeron.png"
+
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+
+    # Third-party notices for fonts bundled into the binary (SIL OFL 1.1).
+    install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/licenses/fonts/Geist-OFL.txt" \
+        "$pkgdir/usr/share/licenses/$pkgname/fonts/Geist-OFL.txt"
+    install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/licenses/fonts/THIRD_PARTY_NOTICES.md" \
+        "$pkgdir/usr/share/licenses/$pkgname/fonts/THIRD_PARTY_NOTICES.md"
+}

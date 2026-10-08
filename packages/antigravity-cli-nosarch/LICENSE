@@ -1,0 +1,21 @@
+Antigravity CLI License Notice
+------------------------------
+
+The Antigravity CLI binary distributed by this package ("agy") is
+proprietary software owned by Google LLC. It is not open source, and no
+source code or open-source license is provided with it.
+
+Your use of the Antigravity CLI is governed by:
+
+    Google Terms of Service:   https://antigravity.google/terms
+    Google Privacy Policy:     https://policies.google.com/privacy
+
+Google collects and uses Interactions data as described in those terms;
+the CLI offers settings to opt out of that collection.
+
+This notice is not a license grant for the upstream binary. It only
+records where the upstream terms can be found, since Google does not
+ship a LICENSE file with the release tarball.
+
+The packaging files for this package (PKGBUILD and this notice) are part
+of NosArch and are covered by the repository's own license.

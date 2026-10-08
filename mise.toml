@@ -1,0 +1,11 @@
+[tasks.pkgchk]
+description = "Validate all custom packages"
+run = "python3 custom_pkg_tool.py validate"
+
+[tasks.pkgref]
+description = "Refresh custom packages"
+run = "python3 custom_pkg_tool.py refresh"
+
+[tasks.pkgupd]
+description = "Update all custom packages"
+run = "python3 custom_pkg_tool.py update"

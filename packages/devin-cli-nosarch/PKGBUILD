@@ -1,0 +1,71 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: json https://static.devin.ai/cli/current/manifest.json version
+
+pkgname=devin-cli-nosarch
+pkgdesc="Command-line interface for Devin, Cognition's AI software engineer"
+pkgver=3000.11.3
+pkgrel=1
+url="https://devin.ai/cli"
+license=('LicenseRef-Devin-CLI')
+
+arch=('x86_64')
+depends=()
+optdepends=(
+    'git: repository integration'
+    'bubblewrap: sandboxed exec (--sandbox)'
+    'socat: sandboxed exec port forwarding (--sandbox)'
+    'openssh: devin ssh into cloud sessions'
+)
+provides=('devin-cli')
+conflicts=('devin-cli' 'devin-cli-bin')
+options=('!strip' '!debug')
+source=(
+    "devin-$pkgver-x86_64-unknown-linux.tar.gz::https://static.devin.ai/cli/$pkgver/devin-$pkgver-x86_64-unknown-linux.tar.gz"
+)
+sha256sums=('83b3b113c01bf2a3e9e100db08d77e6b086806a7754f091e20831bdfe215157e')
+
+package() {
+    # Keep the vendor tree intact: devin resolves its install root from its own executable path
+    # and reads share/devin/docs (and the distribution marker below) as siblings of bin/.
+    install -d "$pkgdir/opt/$pkgname"
+    cp -a --no-preserve=ownership "$srcdir/bin" "$srcdir/share" "$pkgdir/opt/$pkgname/"
+
+    # An unrecognised distribution marker makes the built-in updater answer `devin update` with "Auto-update is not
+    # available for this installation" and silences the background auto-updater too. The wrapper also refuses it.
+    install -Dm644 /dev/stdin "$pkgdir/opt/$pkgname/distribution" <<'EOF'
+nosarch
+EOF
+
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/devin" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+    update|uninstall)
+        echo "devin $1 is blocked: this install is managed by pacman (devin-cli-nosarch)." >&2
+        echo "Upgrade or remove the package with pacman instead." >&2
+        exit 1
+        ;;
+esac
+exec /opt/devin-cli-nosarch/bin/devin "$@"
+EOF
+
+    # Man pages go to the FHS location only; the /opt copy would be a second, unreachable set
+    # (MANPATH never reaches /opt). The vendor's `devin setup` links man pages from its install
+    # root, so leaving none there simply means it finds what pacman already installed.
+    rm -rf "$pkgdir/opt/$pkgname/share/man"
+    install -d "$pkgdir/usr/share/man/man1"
+    install -m644 "$srcdir"/share/man/man1/*.1 "$pkgdir/usr/share/man/man1/"
+
+    # Exception to "always install a license": upstream ships no license text, and the only terms Cognition publishes for
+    # the CLI are the Platform ToS. Scraping a web page for a license file was rejected. namcap requires a file under
+    # /usr/share/licenses/$pkgname for a LicenseRef- identifier. This records the license status. It is NOT the license.
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/licenses/$pkgname/README" <<'EOF'
+Devin CLI is proprietary software of Cognition AI, Inc.
+
+Upstream ships no license text with the binary, and this package does not reproduce one. The terms
+that govern use of the Devin CLI are Cognition's Platform Terms of Service:
+https://cognition.com/legal/platform-terms-of-service
+
+This note records that status only. It is not a license and grants no rights.
+EOF
+}

@@ -1,0 +1,46 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github openchamber/openchamber
+
+pkgname=openchamber-nosarch
+pkgdesc="Open-source workspace for running and reviewing AI coding agents"
+pkgver=2.1.0
+pkgrel=1
+url="https://openchamber.dev"
+license=('MIT')
+
+arch=('x86_64')
+depends=('fuse2' 'hicolor-icon-theme' 'zlib')
+provides=('openchamber')
+conflicts=('openchamber' 'openchamber-desktop' 'openchamber-desktop-git')
+options=('!strip' '!debug')
+source=(
+    "OpenChamber-$pkgver-linux-x86_64.AppImage::https://github.com/openchamber/openchamber/releases/download/v$pkgver/OpenChamber-$pkgver-linux-x86_64.AppImage"
+    "LICENSE::https://raw.githubusercontent.com/openchamber/openchamber/v$pkgver/LICENSE"
+)
+sha256sums=(
+    'ab4f20fc7c17ccbcbe720cfcbbbabd0b592c19d8e7ebe0663d7cb3f918a082f2'
+    '1f6e869a3feff6b4eb07907afc89176562b1f4324389f163d9fd94f09864b44e'
+)
+
+prepare() {
+    chmod +x "$srcdir/OpenChamber-$pkgver-linux-x86_64.AppImage"
+    "$srcdir/OpenChamber-$pkgver-linux-x86_64.AppImage" --appimage-extract >/dev/null
+}
+
+package() {
+    install -Dm755 "$srcdir/OpenChamber-$pkgver-linux-x86_64.AppImage" "$pkgdir/opt/$pkgname/openchamber.AppImage"
+
+    install -d "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/openchamber.AppImage" "$pkgdir/usr/bin/openchamber"
+
+    # The shipped entry execs `AppRun --no-sandbox %U`. The symlink in /usr/bin calls the AppImage, whose runtime
+    # invokes AppRun itself. chrome-sandbox ships unprivileged, hence `--no-sandbox`.
+    install -Dm644 "$srcdir/squashfs-root/openchamber.desktop" "$pkgdir/usr/share/applications/openchamber.desktop"
+    sed --in-place 's|^Exec=AppRun |Exec=openchamber |' "$pkgdir/usr/share/applications/openchamber.desktop"
+
+    install -Dm644 "$srcdir/squashfs-root/usr/share/icons/hicolor/scalable/openchamber.svg" \
+        "$pkgdir/usr/share/icons/hicolor/scalable/apps/openchamber.svg"
+
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}

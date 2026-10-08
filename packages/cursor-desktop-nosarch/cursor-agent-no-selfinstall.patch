@@ -1,0 +1,71 @@
+--- a/usr/share/cursor/bin/cursor
++++ b/usr/share/cursor/bin/cursor
+@@ -130,40 +130,38 @@
+ 	use_cursor_cli "$@"
+ elif [ "$1" = "agent" ] && [ "$CURSOR_CLI_BLOCK_CURSOR_AGENT" != "true" ]; then
+ 	# Route to cursor-agent
+-	if ! command -v ~/.local/bin/cursor-agent >/dev/null 2>&1; then
+-		# Check if bash is available for installation
+-		if command -v bash >/dev/null 2>&1; then
+-			echo "cursor-agent not found, installing via https://cursor.com/install ..."
+-			curl -sS https://cursor.com/install | bash >/dev/null 2>&1
+-			# Remove the previous log line from the terminal output
+-			if command -v tput >/dev/null 2>&1; then
+-				tput cuu1 && tput el
+-			fi
+-		fi
+-		# Check if installation succeeded
+-		if ! command -v ~/.local/bin/cursor-agent >/dev/null 2>&1; then
+-			echo "Error: Could not install cursor-agent." 1>&2
+-			echo "Please install manually by running 'curl -sS https://cursor.com/install | bash >/dev/null'" 1>&2
+-			echo "" 1>&2
+-			echo "To open IDE, use 'cursor' or 'cursor editor' command." 1>&2
+-			exit 1
+-		fi
++	# NosArch: this install is pacman-managed, so the vendor's
++	# `curl https://cursor.com/install | bash` self-install of cursor-agent is
++	# disabled. Prefer the pacman-managed binary (cursor-cli-nosarch), then an
++	# existing user install, then anything else on PATH.
++	if [ -x /usr/bin/cursor-agent ]; then
++		agent_bin=/usr/bin/cursor-agent
++	elif [ -x "$HOME/.local/bin/cursor-agent" ]; then
++		agent_bin="$HOME/.local/bin/cursor-agent"
++	elif command -v cursor-agent >/dev/null 2>&1; then
++		agent_bin="$(command -v cursor-agent)"
++	else
++		echo "Error: cursor-agent not found." 1>&2
++		echo "Install the pacman package 'cursor-cli-nosarch'; curl|bash self-install is disabled." 1>&2
++		echo "" 1>&2
++		echo "To open IDE, use 'cursor' or 'cursor editor' command." 1>&2
++		exit 1
+ 	fi
+ 
+ 	# Check current cursor-agent version meets minimum version requirement
+-	OUTPUT=$({ ~/.local/bin/cursor-agent --min-version=2025.10.01 status; } 2>&1)
++	OUTPUT=$({ "$agent_bin" --min-version=2025.10.01 status; } 2>&1)
+ 	EXIT_CODE=$?
+ 
+ 	# Update and retry if version is too old or doesn't support --min-version
+ 	if { [ "$EXIT_CODE" -eq 2 ] || { [ "$EXIT_CODE" -eq 1 ] && echo "$OUTPUT" | grep -qi "unknown option"; }; }; then
+ 		echo "cursor-agent version is outdated, updating..."
+-		~/.local/bin/cursor-agent update >/dev/null 2>&1
++		"$agent_bin" update >/dev/null 2>&1
+ 		# Remove the previous log line from the terminal output
+ 		if command -v tput >/dev/null 2>&1; then
+ 			tput cuu1 && tput el
+ 		fi
+ 		# Check new version to see if minimum version requirement is met
+-		OUTPUT2=$({ ~/.local/bin/cursor-agent --min-version=2025.10.01 status; } 2>&1)
++		OUTPUT2=$({ "$agent_bin" --min-version=2025.10.01 status; } 2>&1)
+ 		EXIT_CODE2=$?
+ 		if { [ "$EXIT_CODE2" -eq 2 ] || { [ "$EXIT_CODE2" -eq 1 ] && echo "$OUTPUT2" | grep -qi "unknown option"; }; }; then
+ 			echo "Error: cursor-agent version is too old. Please update with 'cursor-agent update'" 1>&2
+@@ -173,7 +171,7 @@
+ 
+ 	# Version is sufficient, run cursor-agent
+ 	export CURSOR_CLI_COMPAT=1
+-	exec ~/.local/bin/cursor-agent "$@"
++	exec "$agent_bin" "$@"
+ else
+ 	# Route to Cursor CLI
+ 	use_cursor_cli "$@"
