@@ -1,0 +1,39 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github charmbracelet/crush
+
+pkgname=crush-nosarch
+pkgdesc="Crush - a glamorous, terminal-first AI assistant for software development"
+pkgver=0.98.0
+pkgrel=1
+url="https://charm.sh"
+license=('LicenseRef-FSL-1.1-MIT')
+
+arch=('x86_64')
+depends=()
+# The release binary is statically linked (no ELF NEEDED entries), so it pulls in no shared libraries at runtime.
+provides=('crush')
+conflicts=('crush' 'crush-bin')
+options=('!strip' '!debug')
+source=("crush-$pkgver-Linux-x86_64.tar.gz::https://github.com/charmbracelet/crush/releases/download/v$pkgver/crush_${pkgver}_Linux_x86_64.tar.gz")
+sha256sums=('ad90cb2eceebca12da38913a0de7e112056c9cb51795370b146a2cc6b3ab6241')
+
+package() {
+    install -Dm755 "$srcdir/crush_${pkgver}_Linux_x86_64/crush" "$pkgdir/opt/$pkgname/crush"
+
+    install -d "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/crush" "$pkgdir/usr/bin/crush"
+
+    # Crush has no self-updating
+
+    install -Dm644 "$srcdir/crush_${pkgver}_Linux_x86_64/completions/crush.bash" \
+        "$pkgdir/usr/share/bash-completion/completions/crush"
+    install -Dm644 "$srcdir/crush_${pkgver}_Linux_x86_64/completions/crush.zsh" \
+        "$pkgdir/usr/share/zsh/site-functions/_crush"
+    install -Dm644 "$srcdir/crush_${pkgver}_Linux_x86_64/completions/crush.fish" \
+        "$pkgdir/usr/share/fish/vendor_completions.d/crush.fish"
+
+    install -Dm644 "$srcdir/crush_${pkgver}_Linux_x86_64/manpages/crush.1.gz" "$pkgdir/usr/share/man/man1/crush.1.gz"
+
+    install -Dm644 "$srcdir/crush_${pkgver}_Linux_x86_64/LICENSE.md" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.md"
+}

@@ -1,0 +1,82 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github can1357/oh-my-pi
+
+pkgname=omp-nosarch
+pkgdesc="omp - a coding agent with the IDE wired in"
+pkgver=18.8.6
+pkgrel=1
+url="https://omp.sh"
+license=('MIT')
+
+arch=('x86_64')
+depends=('glibc')
+optdepends=(
+    'git: repository integration'
+    'python: python tool execution (omp setup python)'
+    'chromium: browser tooling and the browser prelude'
+    'sshfs: mounts over ssh for the bash tool'
+    'alsa-lib: speech output (omp setup speech)'
+    'libpulse: speech output over pulseaudio (omp setup speech)'
+    'xdg-desktop-portal: browser and file chooser portals'
+)
+provides=('oh-my-pi')
+conflicts=('oh-my-pi' 'oh-my-pi-bin')
+options=('!strip' '!debug')
+source=(
+    "omp-linux-x64::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/omp-linux-x64"
+    "LICENSE::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/LICENSE"
+    "THIRD-PARTY-NOTICES.txt::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/THIRD-PARTY-NOTICES.txt"
+)
+sha256sums=(
+    '877acdc48384b80fe4c083b1e610433d28922dd9fccde9ea430aaace8765b19b'
+    '16c45f9d667442781f03fa198914cc39abcaa48ec5ed8f644643e554ca2fbf63'
+    'd0c2e7c05bb4d755044b13fa560be58d01ab7c980b87892400a979397e569a8b'
+)
+
+build() {
+    chmod +x "$srcdir/omp-linux-x64"
+
+    "$srcdir/omp-linux-x64" completions bash > "$srcdir/omp.bash" || true
+    "$srcdir/omp-linux-x64" completions zsh > "$srcdir/_omp" || true
+    "$srcdir/omp-linux-x64" completions fish > "$srcdir/omp.fish" || true
+}
+
+package() {
+    install -Dm755 "$srcdir/omp-linux-x64" "$pkgdir/opt/$pkgname/omp"
+
+    # Self-update block.
+    # `omp update` resolves its own launcher in PATH, decides it is a plain binary install and would overwrite that
+    # path in place, taking the pacman-managed version out from under pacman. It is refused by name.
+    # `omp update --plugins` (-l) only upgrades installed plugins under ~/.omp, so it still runs.
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/omp" <<'EOF'
+#!/bin/sh
+if [ "${1:-}" = "update" ]; then
+    for arg in "$@"; do
+        case "$arg" in
+            -l|--plugins)
+                exec /opt/omp-nosarch/omp "$@"
+                ;;
+        esac
+    done
+    echo "omp update is blocked: this install is managed by pacman (omp-nosarch)." >&2
+    echo "Update or remove the package with pacman instead." >&2
+    echo "Plugins can be updated with: omp update --plugins." >&2
+    exit 1
+fi
+exec /opt/omp-nosarch/omp "$@"
+EOF
+
+    if [[ -s "$srcdir/omp.bash" ]]; then
+        install -Dm644 "$srcdir/omp.bash" "$pkgdir/usr/share/bash-completion/completions/omp"
+    fi
+    if [[ -s "$srcdir/_omp" ]]; then
+        install -Dm644 "$srcdir/_omp" "$pkgdir/usr/share/zsh/site-functions/_omp"
+    fi
+    if [[ -s "$srcdir/omp.fish" ]]; then
+        install -Dm644 "$srcdir/omp.fish" "$pkgdir/usr/share/fish/vendor_completions.d/omp.fish"
+    fi
+
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -Dm644 "$srcdir/THIRD-PARTY-NOTICES.txt" "$pkgdir/usr/share/licenses/$pkgname/THIRD-PARTY-NOTICES.txt"
+}
