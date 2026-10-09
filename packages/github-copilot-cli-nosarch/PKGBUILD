@@ -1,0 +1,67 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github github/copilot-cli
+
+pkgname=github-copilot-cli-nosarch
+pkgdesc="GitHub Copilot CLI - Copilot coding agent in your terminal"
+pkgver=1.0.94
+pkgrel=1
+url="https://github.com/github/copilot-cli"
+license=('LicenseRef-GitHub-Copilot-CLI')
+
+arch=('x86_64')
+depends=('bash' 'gcc-libs' 'glibc')
+provides=('copilot' 'github-copilot-cli')
+conflicts=('copilot' 'github-copilot-cli' 'github-copilot-cli-bin' 'github-copilot-cli-legacy')
+options=('!strip' '!debug')
+source=(
+    "$pkgname-$pkgver.tar.gz::https://github.com/github/copilot-cli/releases/download/v$pkgver/copilot-linux-x64.tar.gz"
+    "LICENSE.md::https://raw.githubusercontent.com/github/copilot-cli/v$pkgver/LICENSE.md"
+)
+sha256sums=(
+    '0acaff842900357f4734c768b8933b1c5c8ce65e1bf74f15573f5cedd650b240'
+    'c694e2d9b3f3bb40704ca9bdc823dc90269999ab4c013dfd8a52c407046074b4'
+)
+
+build() {
+    "$srcdir/copilot" completion bash > "$srcdir/copilot.bash" || true
+    "$srcdir/copilot" completion zsh > "$srcdir/_copilot" || true
+    "$srcdir/copilot" completion fish > "$srcdir/copilot.fish" || true
+}
+
+package() {
+    install -Dm755 "$srcdir/copilot" "$pkgdir/opt/$pkgname/copilot"
+
+    # Self-update block.
+    # COPILOT_AUTO_UPDATE=false is GitHub's documented switch for stopping auto-updates, and it is load-bearing because
+    # on every ordinary invocation the binary otherwise resolves a newer cached package under `~/.cache/copilot/pkg`
+    # and runs that instead of the bundled one, so an auto-downloaded update takes over from pacman.
+    #
+    # `copilot update` is refused by name because it ignores the variable entirely: with COPILOT_AUTO_UPDATE=false it
+    # still contacts GitHub and reports the latest release. The name check is the only thing that stops it.
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/copilot" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+    update)
+        echo "copilot update is blocked: this install is managed by pacman (github-copilot-cli-nosarch)." >&2
+        echo "Update or remove the package with pacman instead." >&2
+        exit 1
+        ;;
+esac
+
+export COPILOT_AUTO_UPDATE=false
+exec /opt/github-copilot-cli-nosarch/copilot "$@"
+EOF
+
+    if [[ -s "$srcdir/copilot.bash" ]]; then
+        install -Dm644 "$srcdir/copilot.bash" "$pkgdir/usr/share/bash-completion/completions/copilot"
+    fi
+    if [[ -s "$srcdir/_copilot" ]]; then
+        install -Dm644 "$srcdir/_copilot" "$pkgdir/usr/share/zsh/site-functions/_copilot"
+    fi
+    if [[ -s "$srcdir/copilot.fish" ]]; then
+        install -Dm644 "$srcdir/copilot.fish" "$pkgdir/usr/share/fish/vendor_completions.d/copilot.fish"
+    fi
+
+    install -Dm644 "$srcdir/LICENSE.md" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.md"
+}
