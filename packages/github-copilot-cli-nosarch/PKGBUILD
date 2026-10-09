@@ -39,6 +39,11 @@ package() {
     #
     # `copilot update` is refused by name because it ignores the variable entirely: with COPILOT_AUTO_UPDATE=false it
     # still contacts GitHub and reports the latest release. The name check is the only thing that stops it.
+    #
+    # The TUI's `/update` slash command cannot be blocked, but it is harmless here anyway. It downloads its package
+    # into the user cache, but a launch with the variable set ignores any newer cached package and runs the bundled
+    # one, which is what keeps pacman's version authoritative. Its attempt to replace process.execPath is aimed at this
+    # package's root-owned /opt binary and fails with EACCES, which the CLI reports rather than acting on.
     install -Dm755 /dev/stdin "$pkgdir/usr/bin/copilot" <<'EOF'
 #!/bin/sh
 case "${1:-}" in
