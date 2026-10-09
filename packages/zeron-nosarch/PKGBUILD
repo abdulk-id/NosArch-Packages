@@ -4,8 +4,8 @@
 
 pkgname=zeron-nosarch
 pkgdesc="A native control plane for Claude Code, Codex, Cursor, Devin and other coding agents."
-pkgver=0.2.102
-pkgrel=2  # Add `alsa-lib` to depends
+pkgver=0.2.107
+pkgrel=1
 url="https://zeron.sh/"
 license=('MIT')
 
@@ -18,7 +18,7 @@ source=(
     "LICENSE::https://raw.githubusercontent.com/zeronsh/zeron/v$pkgver/LICENSE"
 )
 sha256sums=(
-    '269920182e93eb678b1545acafbd90480f1b5ab387083f391cc6adf5bfab13e8'
+    '4186929f5c9662dbda57f276f534996c1c27416fc22d46c4b3f619e6c9f38144'
     'e776600f641baae3fd37387829b40fe2d7c12d01785dc8b846658b7cbb0342e3'
 )
 
