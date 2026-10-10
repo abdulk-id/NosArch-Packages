@@ -77,6 +77,7 @@ NAMCAP_EXCLUDED_RULES: tuple[str, ...] = (
     "elftextrel",
     "rpath",
     "runpath",
+    "pydepends",  # a package that ships its own Python environment resolves every module it imports from it
 )
 
 

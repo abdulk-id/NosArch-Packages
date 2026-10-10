@@ -1,0 +1,198 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github NousResearch/hermes-agent
+
+pkgname=hermes-agent-nosarch
+pkgdesc="Hermes Agent - self-improving AI agent by Nous Research"
+pkgver=0.21.6
+pkgrel=1
+url="https://github.com/NousResearch/hermes-agent"
+license=('MIT')
+
+arch=('x86_64')
+# The agent runs from a venv built against the system interpreter, and node runs the prebuilt
+# TUI bundle the build assembles. Everything else (ripgrep, ffmpeg, clipboard) it stages into
+# ~/.hermes/tools through its own package manager on first use, so those stay optional.
+depends=('python' 'nodejs' 'git')
+optdepends=(
+    'ripgrep: fast file search for the agent tools'
+    'ffmpeg: audio and video processing'
+    'openssh: ssh tool backend'
+    'wl-clipboard: clipboard access for the TUI on Wayland'
+    'xclip: clipboard access for the TUI on X11'
+)
+provides=('hermes' 'hermes-agent')
+conflicts=('hermes' 'hermes-agent')
+options=('!strip' '!debug')
+# matrix pulls python-olm, which compiles a vendored libolm through CFFI and declares a
+# cmake_minimum_required older than CMake 4 accepts. Both are build-time only.
+makedepends=('cmake' 'gcc')
+source=("$pkgname-$pkgver.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('1ba3500cdbe876bb9d347b3c12f41c591a421293eac58faba23571287dfe1cf8')
+
+build() {
+    # The archive's top-level directory, named after the upstream repository, not after $pkgname.
+    local srctree="$srcdir/hermes-agent-$pkgver"
+    local payload="$srcdir/.build/payload"
+    local products="$srcdir/.build/products"
+
+    # Keep the build's toolchain staging and every cache it writes inside the build directory:
+    # PM provisions its own pinned uv and would otherwise write into the building user's ~/.hermes.
+    export HOME="$srcdir/.build/home"
+    export HERMES_RUNTIME_DIR="$srcdir/.build/tools"
+    mkdir -p "$HOME" "$products" "$payload"
+
+    # Fixed-prefix layout, the shape the vendor builds for its own Docker image and Termux
+    # package: code tree, venv and built products side by side, with launchers that resolve
+    # their root from their own location and are therefore relocatable to /opt by package().
+    # Left out: the Electron desktop app (apps/), the docs site (website/), the test and eval
+    # suites, the packaging recipes belonging to other distributions, and the web and TUI
+    # sources -- a prebuilt install runs hermes_cli/web_dist and hermes_cli/tui_dist instead.
+    tar -C "$srctree" -cf - \
+        --exclude='./apps' --exclude='./tests' --exclude='./tests-js' --exclude='./evals' \
+        --exclude='./website' --exclude='./.github' --exclude='./nix' --exclude='./docker' \
+        --exclude='./web' --exclude='./ui-tui' \
+        --exclude='./node_modules' --exclude='./.build' --exclude='./__pycache__' \
+        . | tar -C "$payload" -xf -
+
+    # PM owns the locked Python environment and provisions its pinned installer itself, so the
+    # build needs no uv on the host. `all` is the vendor's own composite extra; the rest are the
+    # optional features a user would otherwise have to install into a read-only /opt tree by hand.
+    # pm is imported out of the checkout, so every python call below runs with it on sys.path.
+    cd "$srctree"
+    CMAKE_POLICY_VERSION_MINIMUM=3.5 \
+        /usr/bin/python3 -m pm.build_env --source "$srctree" --python /usr/bin/python3 \
+        --out "$payload/venv" --sealed \
+        --extra all --extra messaging --extra anthropic --extra edge-tts --extra ddgs \
+        --extra doc-extract --extra feishu --extra matrix --extra dingtalk --extra wecom \
+        --extra teams --extra google-chat
+
+    # PM's independent dependency graph. The assembler needs one to bind the runtime to, and it
+    # is deliberately not shipped: its marker points at the copied /usr/bin/python3, which cannot
+    # satisfy the containment check pm/runtime.py applies to a packaged install. At run time PM
+    # stages its own copy under ~/.hermes on first use, exactly as it does for a source install
+    # made by the vendor's own install.sh.
+    /usr/bin/python3 -m pm.build_env --source "$srctree/pm" --python /usr/bin/python3 \
+        --out "$srcdir/.build/pm-runtime" --manager-runtime
+    /usr/bin/python3 - "$srcdir/.build/pm-runtime" <<'EOF'
+import json
+import sys
+from pathlib import Path
+
+runtime = Path(sys.argv[1])
+sites = list(runtime.glob("lib/python*/site-packages"))
+if len(sites) != 1:
+    raise SystemExit(f"PM runtime dependency directory missing or ambiguous: {runtime}")
+# The staged marker is an empty placeholder; the assembler wants real, resolvable paths.
+(runtime / "pm-runtime.json").write_text(json.dumps(
+    {"python": "bin/python", "sitePackages": sites[0].relative_to(runtime).as_posix()}
+))
+EOF
+
+    # Frontend products, compiled exactly as the vendor's Docker image compiles them.
+    node "$srctree/scripts/build/node-deps.mjs" --source "$srctree" --workspace ui-tui --workspace web
+    "$payload/venv/bin/python" "$srctree/scripts/generate_icons.py" --source "$srctree" \
+        --out "$products/icons"
+    node "$srctree/scripts/build/tui.mjs" --source "$srctree" --out "$products/tui"
+    node "$srctree/scripts/build/web.mjs" --source "$srctree" --icons "$products/icons" --out "$products/web"
+
+    # The release tarball carries no .git, so the provenance stamp takes the tag's commit from
+    # the remote. Without a commit hermes reports its own version as "unknown".
+    local commit
+    commit="$(git ls-remote "$url.git" "refs/tags/v$pkgver^{}" | cut -f1)"
+    if [ -z "$commit" ]; then
+        commit="$(git ls-remote "$url.git" "refs/tags/v$pkgver" | cut -f1)"
+    fi
+    "$payload/venv/bin/python" "$srctree/scripts/write_install_stamp.py" \
+        --output "$srcdir/.build/install-stamp.json" --commit "$commit" --branch main \
+        --base-version "$pkgver" --distance 0 --source local --update-mechanism external
+
+    /usr/bin/python3 - "$srctree" "$srcdir/.build" "$payload" "$products" "$commit" \
+        "$srcdir/.build/agent-inputs.json" <<'EOF'
+import json
+import sys
+import sysconfig
+from pathlib import Path
+
+source, build, payload, products = (Path(value) for value in sys.argv[1:5])
+ref, out = sys.argv[5], Path(sys.argv[6])
+venv = payload / "venv"
+environment = {"base": str(venv), "platbase": str(venv)}
+out.write_text(json.dumps({
+    "project": str(source / "pyproject.toml"),
+    "code": str(payload),
+    "repo": ".",
+    "placement": "fixed",
+    "target": "linux-x64",
+    "python": str(venv / "bin/python"),
+    "site_packages": sysconfig.get_path("purelib", vars=environment),
+    "environment": str(venv),
+    "pm_runtime": str(build / "pm-runtime"),
+    "bin_dir": "libexec",
+    "resources": {name: str(source / name) for name in
+                  ("skills", "optional-skills", "plugins", "locales", "optional-mcps")},
+    "frontends": {"tui": str(products / "tui"), "web": str(products / "web")},
+    "stamp": str(build / "install-stamp.json"),
+    "ref": ref,
+}, indent=2))
+EOF
+    "$payload/venv/bin/python" -m scripts.build.agent \
+        --inputs "$srcdir/.build/agent-inputs.json" --out "$payload"
+}
+
+check() {
+    # A silently missing product or extra only surfaces when a user runs the feature, so prove
+    # both here: the built bundles, and every optional dependency group the package claims.
+    local payload="$srcdir/.build/payload"
+
+    test -s "$payload/hermes_cli/web_dist/index.html"
+    test -s "$payload/hermes_cli/tui_dist/entry.js"
+    test -x "$payload/venv/bin/python"
+
+    "$payload/venv/bin/python" -c '
+import anthropic, defusedxml, ddgs, edge_tts, lark_oapi, mautrix
+import hermes_cli.main
+' "$payload"
+}
+
+package() {
+    local stage="$srcdir/.build/payload"
+    local payload="$pkgdir/opt/$pkgname"
+
+    install -d "$pkgdir/opt"
+    mv "$stage" "$payload"
+
+    # Only self-management is blocked: `hermes update` pulls into a git tree and
+    # `hermes uninstall` deletes the install root, and pacman owns both.
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/hermes" <<'EOF'
+#!/bin/sh
+case "${1:-}" in
+    update|uninstall)
+        echo "hermes $1 is blocked: this install is managed by pacman (hermes-agent-nosarch)." >&2
+        echo "Upgrade or remove the package with pacman instead." >&2
+        exit 1
+        ;;
+esac
+exec /opt/hermes-agent-nosarch/libexec/hermes "$@"
+EOF
+    ln -s "/opt/$pkgname/libexec/hermes-agent" "$pkgdir/usr/bin/hermes-agent"
+    ln -s "/opt/$pkgname/libexec/hermes-acp" "$pkgdir/usr/bin/hermes-acp"
+
+    # Completions are best-effort: only the shells that produced output get a file.
+    local shell
+    for shell in bash zsh fish; do
+        HOME="$srcdir/.build/home" "$payload/libexec/hermes" completion "$shell" \
+            > "$srcdir/.build/completion.$shell" 2>/dev/null || true
+    done
+    if [ -s "$srcdir/.build/completion.bash" ]; then
+        install -Dm644 "$srcdir/.build/completion.bash" "$pkgdir/usr/share/bash-completion/completions/hermes"
+    fi
+    if [ -s "$srcdir/.build/completion.zsh" ]; then
+        install -Dm644 "$srcdir/.build/completion.zsh" "$pkgdir/usr/share/zsh/site-functions/_hermes"
+    fi
+    if [ -s "$srcdir/.build/completion.fish" ]; then
+        install -Dm644 "$srcdir/.build/completion.fish" "$pkgdir/usr/share/fish/vendor_completions.d/hermes.fish"
+    fi
+
+    install -Dm644 "$srcdir/hermes-agent-$pkgver/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
