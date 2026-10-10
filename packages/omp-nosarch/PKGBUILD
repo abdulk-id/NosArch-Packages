@@ -4,7 +4,7 @@
 
 pkgname=omp-nosarch
 pkgdesc="omp - a coding agent with the IDE wired in"
-pkgver=18.8.6
+pkgver=18.8.7
 pkgrel=1
 url="https://omp.sh"
 license=('MIT')
@@ -29,7 +29,7 @@ source=(
     "THIRD-PARTY-NOTICES.txt::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/THIRD-PARTY-NOTICES.txt"
 )
 sha256sums=(
-    '877acdc48384b80fe4c083b1e610433d28922dd9fccde9ea430aaace8765b19b'
+    'b87f9835a0acdbb81bbbad8273aa2d999b608a208598421a9584cffeb3139a8a'
     '16c45f9d667442781f03fa198914cc39abcaa48ec5ed8f644643e554ca2fbf63'
     'd0c2e7c05bb4d755044b13fa560be58d01ab7c980b87892400a979397e569a8b'
 )
