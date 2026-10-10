@@ -1,0 +1,62 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github Homebrew/brew
+
+pkgname=homebrew-nosarch
+pkgdesc="The missing package manager for macOS and Linux"
+pkgver=7.0.9
+pkgrel=1
+url="https://brew.sh"
+license=('BSD-2-Clause')
+
+arch=('x86_64')
+depends=('bash' 'curl' 'file' 'gcc' 'git' 'procps-ng')
+provides=('homebrew')
+conflicts=('homebrew')
+options=('!strip' '!debug')
+source=(
+    "homebrew-$pkgver.tar.gz::https://github.com/Homebrew/brew/archive/refs/tags/$pkgver.tar.gz"
+)
+sha256sums=(
+    '9fd47fcae0b34c1d57e8d1334e28778c72f8687584371d38fad04c28b1c11c72'
+)
+
+package() {
+    # The git tag tarball is the payload. A GitHub tag archive extracts to a dir named after the rpeo, not the URL.
+    local repo="$srcdir/brew-$pkgver"
+
+    # Upstream's repository development files are dropped: they are contributor tooling and have no role at runtime.
+    install -d "$pkgdir/opt/homebrew-nosarch/Homebrew"
+    cp -a "$repo/." "$pkgdir/opt/homebrew-nosarch/Homebrew/"
+    rm -rf "$pkgdir/opt/homebrew-nosarch/Homebrew"/{.claude,.codex,.cursor,.devcontainer,.github}
+    rm -rf "$pkgdir/opt/homebrew-nosarch/Homebrew/Library/Homebrew/test"
+    rm -f "$pkgdir/opt/homebrew-nosarch/Homebrew"/{AGENTS.md,CLAUDE.md,CODEOWNERS,CONTRIBUTING.md,Dockerfile}
+
+    # The wrapper has to exec through the prefix symlink rather than the resolved /opt path: bin/brew derives
+    # HOMEBREW_PREFIX from its own location, so execing the /opt copy would point the Cellar at /opt.
+    install -Dm755 /dev/stdin "$pkgdir/usr/bin/brew" <<EOF
+#!/bin/sh
+# Self-update block.
+# This install ships without a .git directory, so brew cannot self-update. Allowing the command would attempt a git
+# checkout that corrupts the pacman-owned tree.
+case "\${1:-}" in
+    update | --force-update)
+        echo "brew \$1 is blocked: this install is managed by pacman ($pkgname)." >&2
+        echo "Update or remove the package with pacman instead." >&2
+        exit 1
+        ;;
+esac
+
+export HOMEBREW_VERSION=$pkgver
+export HOMEBREW_NO_AUTO_UPDATE=1
+exec /home/linuxbrew/.linuxbrew/bin/brew "\$@"
+EOF
+
+    install -Dm644 "$repo/manpages/brew.1" "$pkgdir/usr/share/man/man1/brew.1"
+
+    install -Dm644 "$repo/completions/bash/brew" "$pkgdir/usr/share/bash-completion/completions/brew"
+    install -Dm644 "$repo/completions/zsh/_brew" "$pkgdir/usr/share/zsh/site-functions/_brew"
+    install -Dm644 "$repo/completions/fish/brew.fish" "$pkgdir/usr/share/fish/vendor_completions.d/brew.fish"
+
+    install -Dm644 "$repo/LICENSE.txt" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.txt"
+}

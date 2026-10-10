@@ -1,0 +1,71 @@
+# Homebrew's own directory layout, which cannot be expressed in package(): it lives
+# under /home and is owned by the invoking user rather than by root.
+#
+# The prefix is separate from the pacman-owned repository in /opt because brew derives
+# HOMEBREW_PREFIX from where bin/brew lives, and the repository must stay pacman-owned
+# while the prefix must stay writable. bin/brew here is a symlink into /opt, which is
+# what makes brew report the /home prefix while executing the /opt code.
+
+_prefix=/home/linuxbrew/.linuxbrew
+_repo=/opt/homebrew-nosarch/Homebrew
+
+# Homebrew aborts every install with "The following directories are not writable by
+# your user" unless each of these exists and is owned by the user. The list mirrors
+# Keg.must_be_writable_directories plus must_exist_directories in upstream's keg.rb.
+_dirs=(
+    bin etc include lib sbin share opt var Frameworks
+    Cellar Caskroom
+    etc/bash_completion.d lib/pkgconfig lib/cps
+    share/aclocal share/cps share/doc share/info share/locale share/man
+    share/man/man1 share/man/man2 share/man/man3 share/man/man4 share/man/man5
+    share/zsh share/zsh/site-functions
+    share/fish share/fish/vendor_completions.d share/fish/vendor_functions.d
+    share/pwsh share/pwsh/completions
+    var/log var/homebrew var/homebrew/cache var/homebrew/locks var/homebrew/logs
+    var/homebrew/linked
+)
+
+_install_prefix() {
+    install -d -m 755 "$_prefix"
+    local dir
+    for dir in "${_dirs[@]}"; do
+        install -d -m 755 "$_prefix/$dir"
+    done
+    ln -sfn "$_repo/bin/brew" "$_prefix/bin/brew"
+}
+
+# Without a valid SUDO_USER there is no safe owner to pick, so leave the tree as
+# pacman installed it. brew then reports the directories as not writable until the
+# owner is set by hand, which is better than handing it to the wrong account.
+_chown_tree() {
+    local user=${SUDO_USER:-}
+
+    if [[ -z "$user" ]] || ! getent passwd "$user" &>/dev/null; then
+        echo ":: Not running under sudo, leaving $_prefix and $_repo owned by root."
+        echo ":: Set their owner to your own account before running brew:"
+        echo "::   sudo chown -R \$USER $_prefix $_repo"
+        return 0
+    fi
+
+    chown -R "$user:$(id -gn "$user")" "$_prefix" "$_repo"
+}
+
+post_install() {
+    _install_prefix
+    _chown_tree
+}
+
+post_upgrade() {
+    _install_prefix
+    _chown_tree
+}
+
+post_remove() {
+    # The Cellar and everything in it are installed by brew, not tracked by pacman, so
+    # pacman cannot clean them up. This is the documented Homebrew uninstall step, and it
+    # is destructive, so say so rather than deleting a prefix silently.
+    if [[ -d /home/linuxbrew ]]; then
+        echo ":: Removing /home/linuxbrew, including every formula and cask installed with brew."
+    fi
+    rm -rf /home/linuxbrew
+}

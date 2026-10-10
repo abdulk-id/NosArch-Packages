@@ -78,6 +78,7 @@ NAMCAP_EXCLUDED_RULES: tuple[str, ...] = (
     "rpath",
     "runpath",
     "pydepends",  # a package that ships its own Python environment resolves every module it imports from it
+    "javafiles",  # a vendored gem can ship a JRuby-only jar next to the Ruby it actually runs on
 )
 
 
