@@ -1,17 +1,15 @@
 ---
 name: custom-package
-description: Add a NosArch custom package (PKGBUILD under nosarch/packages). Use when asked to package an app, turn an
-    AppImage, GitHub release, vendor tarball, or curl-pipe-bash installer into a package Decman can manage, or to add
-    such a package to a module.
+description: Add a NosArch custom package (PKGBUILD under ./packages). Use when asked to package an app or to turn an
+    AppImage, GitHub release, vendor tarball, or curl-pipe-bash installer into a package Decman can manage.
 ---
 
 # Add custom package
 
-Add a custom package to NosArch: a PKGBUILD in this repo that turns an AppImage, vendor tarball, or `curl | bash`
+Add a custom package to NosArch. A PKGBUILD in `./packages` that turns an AppImage, vendor tarball, or `curl | bash`
 payload into an Arch package Decman can manage.
 
-The source of truth for every step is `docs/internal/custom-packages.md` (repo root relative). Read it when a step
-needs more than the summary below.
+The source of truth for every step is `PACKAGES.md`. Read it when a step needs more than the summary below.
 
 ## Inputs
 
@@ -23,6 +21,8 @@ You need:
 If the name or the payload source is missing from the user's message, ask for it.
 
 ## Workflow
+
+Before creating the package, verify that the package doesn't already exist in Arch's official package repos.
 
 1. **Create the directory**: one directory per package under `nosarch/packages/`, named exactly as the `pkgname` it
    builds, suffixed with `-nosarch` to avoid AUR name collisions.
