@@ -1,0 +1,84 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github mijorus/gearlever
+
+pkgname=gearlever-nosarch
+pkgdesc="Utility to manage AppImages with ease"
+pkgver=4.6.2
+pkgrel=1
+url="https://gearlever.mijorus.it"
+license=('GPL-3.0-or-later')
+
+arch=('x86_64' 'aarch64')
+depends=('7zip' 'binutils' 'dconf' 'file' 'glib2' 'gtk4' 'hicolor-icon-theme' 'libadwaita'
+         'libnotify' 'python' 'python-dbus' 'python-gobject' 'python-pyxdg' 'python-requests'
+         'squashfs-tools')
+optdepends=(
+    'dwarfs: extraction of dwarfs-compressed AppImages'
+)
+provides=('gearlever')
+conflicts=('gearlever' 'gearlever-git' 'gearlever-bin' 'gearlever-appimage')
+options=('!strip' '!debug')
+makedepends=('gettext' 'meson')
+checkdepends=('appstream' 'desktop-file-utils')
+# ftputil and desktop_entry_lib are hard imports with no official Arch package. Both go into the package's own
+# pkgdatadir, which gearlever.in puts on sys.path, so nothing reaches into the system site-packages.
+source=(
+    "$pkgname-$pkgver.tar.gz::https://github.com/mijorus/gearlever/archive/refs/tags/$pkgver.tar.gz"
+    "ftputil-5.1.0.tar.gz::https://files.pythonhosted.org/packages/73/dc/83f3fa78a9c8a8fe119a70d040df67799094821d3cad511ee0987d544a10/ftputil-5.1.0.tar.gz"
+    "desktop_entry_lib-5.0-py3-none-any.whl::https://files.pythonhosted.org/packages/ca/01/46ec5a4780889da06f016553d1d18d804b3e0da570e4b1e50bd8d28c4a82/desktop_entry_lib-5.0-py3-none-any.whl"
+)
+sha256sums=(
+    '9f8f7a43d51e8ddcb66ee1d9aa5e6d1b9f5948c70e51be89e5bac045a01bd9ca'
+    'e9e62d3fd307ef9c52e43b33fd92759fc94c04d8b5178f85f641b183906d4353'
+    'e60a0c2c5e42492dbe5378e596b1de87d1b1c4dc74d1f41998a164ee27a1226f'
+)
+
+prepare() {
+    cd "$srcdir/gearlever-$pkgver"
+
+    # Upstream calls 7zz; Arch's 7zip installs the same binary as 7z.
+    sed --in-place "s/'7zz'/'7z'/g" src/providers/AppImageProvider.py
+
+    # The AppImage offset helper ships as build-aux/get_appimage_offset.sh and upstream shells out to it by bare name.
+    # package() installs it under this package's libdir instead.
+    sed --in-place "s|'get_appimage_offset'|'/usr/lib/$pkgname/get_appimage_offset'|g" src/providers/AppImageProvider.py
+}
+
+build() {
+    arch-meson "$srcdir/gearlever-$pkgver" build
+    meson compile -C build
+}
+
+check() {
+    meson test -C build --print-errorlogs
+}
+
+package() {
+    meson install -C build --no-rebuild --destdir "$pkgdir"
+
+    # Two install_subdir('.') calls upstream copy their own meson.build into place as if it were data.
+    rm -f "$pkgdir/usr/share/icons/hicolor/scalable/actions/meson.build" \
+          "$pkgdir/usr/share/gearlever/gearlever/meson.build"
+
+    # gearlever.in does sys.path.insert(1, pkgdatadir), so anything here is importable by the app without
+    # touching the system site-packages. Only the importable package dir is taken from each archive; the
+    # sdist's setup.py and the wheel's dist-info stay out of the package.
+    install -d "$pkgdir/usr/share/gearlever"
+
+    bsdtar -xf "$srcdir/ftputil-5.1.0.tar.gz" -C "$srcdir"
+    bsdtar -xf "$srcdir/desktop_entry_lib-5.0-py3-none-any.whl" -C "$srcdir"
+
+    cp -a --no-preserve=ownership "$srcdir/ftputil-5.1.0/ftputil" "$pkgdir/usr/share/gearlever/"
+    cp -a --no-preserve=ownership "$srcdir/desktop_entry_lib" "$pkgdir/usr/share/gearlever/"
+
+    install -Dm755 "$srcdir/gearlever-$pkgver/build-aux/get_appimage_offset.sh" \
+        "$pkgdir/usr/lib/$pkgname/get_appimage_offset"
+
+    install -Dm644 "$srcdir/gearlever-$pkgver/COPYING" "$pkgdir/usr/share/licenses/$pkgname/COPYING"
+
+    # Licenses for the two vendored modules (BSD-3-Clause and BSD-2-Clause), recorded under their own names.
+    install -Dm644 "$srcdir/ftputil-5.1.0/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/ftputil-LICENSE"
+    install -Dm644 "$srcdir/desktop_entry_lib-5.0.dist-info/LICENSE" \
+        "$pkgdir/usr/share/licenses/$pkgname/desktop_entry_lib-LICENSE"
+}
