@@ -4,7 +4,7 @@
 
 pkgname=opencode-desktop-nosarch
 pkgdesc="Open source AI coding agent desktop app"
-pkgver=1.18.35
+pkgver=1.19.0
 pkgrel=1
 url="https://opencode.ai"
 license=('MIT')
@@ -20,7 +20,7 @@ source=(
     "LICENSE::https://raw.githubusercontent.com/anomalyco/opencode/v$pkgver/LICENSE"
 )
 sha256sums=(
-    '2243bff81e3ac08605fe8a2aff022f3f581cfd2ef07136a3f7cc32cb9fc74fa6'
+    '9d3d06420b995efbc6e48614117b63cca2bb51db0ec6121a2e4126d24a1cbc45'
     '625f0f619133f89bbbb2abe37369613dfa1885eba1e50d02170deb62bb42cb6b'
 )
 
