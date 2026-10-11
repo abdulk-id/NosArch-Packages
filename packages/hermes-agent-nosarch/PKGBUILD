@@ -5,7 +5,7 @@
 pkgname=hermes-agent-nosarch
 pkgdesc="Hermes Agent - self-improving AI agent by Nous Research"
 pkgver=0.21.6
-pkgrel=2
+pkgrel=4
 url="https://github.com/NousResearch/hermes-agent"
 license=('MIT')
 
@@ -34,8 +34,10 @@ provides=('hermes' 'hermes-agent' 'hermes-desktop' 'hermes-agent-desktop')
 conflicts=('hermes' 'hermes-agent' 'hermes-desktop' 'hermes-agent-desktop')
 options=('!strip' '!debug')
 # matrix pulls python-olm, which compiles a vendored libolm through CFFI and declares a
-# cmake_minimum_required older than CMake 4 accepts. Both are build-time only.
-makedepends=('cmake' 'gcc')
+# cmake_minimum_required older than CMake 4 accepts. npm is a separate package from nodejs on
+# Arch, and the TUI/web/desktop builds all drive it. gcc builds node-pty and the desktop app's
+# X11 helper. All build-time only.
+makedepends=('cmake' 'gcc' 'npm')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('1ba3500cdbe876bb9d347b3c12f41c591a421293eac58faba23571287dfe1cf8')
 
@@ -232,21 +234,26 @@ fi
 
 exec /opt/hermes-agent-nosarch/libexec/hermes desktop --skip-build "$@"
 EOF
-    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/hermes-desktop.desktop" <<'EOF'
+    # Named com.nousresearch.hermes.desktop on purpose: `hermes desktop` writes its own entry
+    # to ~/.local/share/applications under that exact id, and XDG resolves one id across both
+    # directories. Sharing the id keeps one "Hermes" in the app grid instead of two, and lets
+    # the user's copy shadow ours rather than fight it.
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/com.nousresearch.hermes.desktop" <<'EOF'
 [Desktop Entry]
 Type=Application
 Name=Hermes
-GenericName=AI Agent Client
-Comment=Hermes Agent desktop client
+GenericName=Hermes Desktop
+Comment=Launch Hermes Desktop
 Exec=hermes-desktop %U
 Icon=hermes
 Terminal=false
+Categories=Utility;
 StartupNotify=true
-StartupWMClass=Hermes
-Categories=Development;
+StartupWMClass=com.nousresearch.hermes
 MimeType=x-scheme-handler/hermes;
 EOF
-    install -Dm644 "$srctree/apps/desktop/assets/icon.png" "$pkgdir/usr/share/icons/hicolor/512x512/apps/hermes.png"
+    # The artwork is 1024x1024, so the themed directory has to say so or the shell scales it.
+    install -Dm644 "$srctree/apps/desktop/assets/icon.png" "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/hermes.png"
 
     # Completions are best-effort: only the shells that produced output get a file.
     local shell
