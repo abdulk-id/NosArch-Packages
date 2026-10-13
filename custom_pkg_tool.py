@@ -19,6 +19,11 @@ Options (validate):
 Options (update):
     -n, --dry-run    Only print what would change, without making any changes.
 
+Environment (update):
+    NOSARCH_VALIDATE_AFTER_UPDATE   When set to true, run `validate --build` on each package that was updated.
+                                    Otherwise, if stdin is a TTY, prompt to validate updated packages after a successful
+                                    update. Quiet mode and non-interactive runs do not prompt.
+
 Exit codes:
     0   Everything is valid and at the latest version.
     1   Error: a PKGBUILD does not parse, fails validation, trips namcap, has a broken upstream directive, or an
@@ -783,6 +788,77 @@ def report_refresh(results: list[Result], quiet: bool) -> None:
         _print_result_block(result, status, quiet)
 
 
+def _env_truthy(name: str) -> bool:
+    value: str = os.environ.get(name, "").strip().lower()
+    return value in ("1", "true", "yes", "on")
+
+
+def _should_validate_after_update(updated: list[Path], dry_run: bool, quiet: bool) -> bool:
+    if dry_run or not updated:
+        return False
+
+    if _env_truthy("NOSARCH_VALIDATE_AFTER_UPDATE"):
+        return True
+
+    if quiet or not sys.stdin.isatty():
+        return False
+
+    names: str = ", ".join(directory.name for directory in updated)
+
+    try:
+        answer: str = input(
+            f"[UPDATE] Validate {len(updated)} updated package(s) with a full build? [{names}] [y/N] "
+        )
+    except EOFError:
+        return False
+
+    return answer.strip().lower() in ("y", "yes")
+
+
+def validate_directories(directories: list[Path], build: bool, quiet: bool) -> int:
+    """Runs validate on the given package directories. Returns an exit status."""
+    if not directories:
+        return EXIT_OK
+
+    have_namcap: bool = shutil.which("namcap") is not None
+
+    if not quiet:
+        if not have_namcap:
+            print("[PACKAGES] WARNING: namcap is not installed, skipping PKGBUILD linting.")
+            print("[PACKAGES]       Install it with: pacman -S namcap")
+        elif not build:
+            print("[PACKAGES] NOTE: pass --build to let namcap audit 'depends'.")
+
+    results: list[Result] = []
+
+    for index, directory in enumerate(directories, start=1):
+        if not quiet:
+            print(f"[PACKAGES] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
+        results.append(validate_package(directory, build, have_namcap, quiet=quiet))
+
+    report_validate(results, quiet)
+
+    errored: list[Result] = [result for result in results if result.has_errors]
+    warned: list[Result] = [result for result in results if result.has_warnings]
+
+    if errored:
+        print(f"[PACKAGES] ERROR: {len(errored)} of {len(results)} custom package(s) will not build.")
+    elif warned:
+        print(f"[PACKAGES] WARNING: {len(warned)} of {len(results)} custom package(s) need attention.")
+    elif not quiet:
+        print("[PACKAGES] SUCCESS: All custom packages are valid.")
+
+    return _exit_status(results)
+
+
+def _combine_exit_status(left: int, right: int) -> int:
+    if left == EXIT_ERROR or right == EXIT_ERROR:
+        return EXIT_ERROR
+    if left == EXIT_WARNING or right == EXIT_WARNING:
+        return EXIT_WARNING
+    return EXIT_OK
+
+
 def _exit_status(results: list[Result]) -> int:
     errored: list[Result] = [result for result in results if result.has_errors]
     warned: list[Result] = [result for result in results if result.has_warnings]
@@ -810,35 +886,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
             print("[PACKAGES] No custom packages found.")
         return EXIT_OK
 
-    have_namcap: bool = shutil.which("namcap") is not None
-
-    if not args.quiet:
-        if not have_namcap:
-            print("[PACKAGES] WARNING: namcap is not installed, skipping PKGBUILD linting.")
-            print("[PACKAGES]       Install it with: pacman -S namcap")
-        elif not args.build:
-            print("[PACKAGES] NOTE: pass --build to let namcap audit 'depends'.")
-
-    results: list[Result] = []
-
-    for index, directory in enumerate(directories, start=1):
-        if not args.quiet:
-            print(f"[PACKAGES] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
-        results.append(validate_package(directory, args.build, have_namcap, quiet=args.quiet))
-
-    report_validate(results, args.quiet)
-
-    errored: list[Result] = [result for result in results if result.has_errors]
-    warned: list[Result] = [result for result in results if result.has_warnings]
-
-    if errored:
-        print(f"[PACKAGES] ERROR: {len(errored)} of {len(results)} custom package(s) will not build.")
-    elif warned:
-        print(f"[PACKAGES] WARNING: {len(warned)} of {len(results)} custom package(s) need attention.")
-    elif not args.quiet:
-        print("[PACKAGES] SUCCESS: All custom packages are valid.")
-
-    return _exit_status(results)
+    return validate_directories(directories, args.build, args.quiet)
 
 
 def cmd_refresh(args: argparse.Namespace) -> int:
@@ -893,6 +941,7 @@ def cmd_update(args: argparse.Namespace) -> int:
         return EXIT_OK
 
     outcomes: dict[str, int] = {"current": 0, "updated": 0, "skipped": 0, "needs-manual": 0, "failed": 0}
+    updated_directories: list[Path] = []
 
     for index, directory in enumerate(directories, start=1):
         if not args.quiet:
@@ -903,6 +952,8 @@ def cmd_update(args: argparse.Namespace) -> int:
 
         if outcome == "updated":
             print(f"[UPDATE] {directory.name}: {'would update' if args.dry_run else 'updated'}")
+            if not args.dry_run:
+                updated_directories.append(directory)
 
     total: int = len(directories)
 
@@ -915,13 +966,19 @@ def cmd_update(args: argparse.Namespace) -> int:
 
         print(f"[UPDATE] Done: {', '.join(parts)} out of {total} package(s).")
 
+    update_exit: int = EXIT_OK
+
     if outcomes["failed"]:
-        return EXIT_ERROR
+        update_exit = EXIT_ERROR
+    elif outcomes["needs-manual"]:
+        update_exit = EXIT_WARNING
 
-    if outcomes["needs-manual"]:
-        return EXIT_WARNING
+    if _should_validate_after_update(updated_directories, args.dry_run, args.quiet):
+        if not args.quiet:
+            print()
+        return _combine_exit_status(update_exit, validate_directories(updated_directories, True, args.quiet))
 
-    return EXIT_OK
+    return update_exit
 
 
 def main() -> int:
