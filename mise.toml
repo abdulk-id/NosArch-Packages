@@ -12,4 +12,4 @@ run = "python3 custom_pkg_tool.py update"
 
 [tasks.pkgupdchk]
 description = "Update custom packages and validate"
-run = "NOSARCH_VALIDATE_AFTER_UPDATE=1 python3 custom_pkg_tool update"
+run = "NOSARCH_VALIDATE_AFTER_UPDATE=1 python3 custom_pkg_tool.py update"
