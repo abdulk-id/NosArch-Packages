@@ -4,8 +4,8 @@
 
 pkgname=hermes-agent-nosarch
 pkgdesc="Hermes Agent - self-improving AI agent by Nous Research"
-pkgver=0.21.6
-pkgrel=4
+pkgver=0.21.7
+pkgrel=1
 url="https://github.com/NousResearch/hermes-agent"
 license=('MIT')
 
@@ -39,7 +39,7 @@ options=('!strip' '!debug')
 # X11 helper. All build-time only.
 makedepends=('cmake' 'gcc' 'npm')
 source=("$pkgname-$pkgver.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('1ba3500cdbe876bb9d347b3c12f41c591a421293eac58faba23571287dfe1cf8')
+sha256sums=('fcf5fc29d3088764a5a293910f75f43dc736b5655ed410d7339cf94cc1462459')
 
 build() {
     # The archive's top-level directory, named after the upstream repository, not after $pkgname.
