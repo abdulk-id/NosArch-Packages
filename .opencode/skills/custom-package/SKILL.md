@@ -29,10 +29,7 @@ Before creating the package, verify that the package doesn't already exist in Ar
 2. **Resolve and pin the payload**: find the actual file `package()` fetches and pin its `sha256sum`. For a
    `curl https://... | bash` installer, read the script with `less` to find the real URL(s) it fetches. Do not run
    the installer.
-3. **Write the PKGBUILD**: `# Maintainer: NosArch` first line, the `# nosarch-upstream:` directive right after,
-   then the package-info block (`pkgname`, `pkgdesc`, `pkgver`, `pkgrel`, `url`, `license`), then the build block
-   (`arch`, `depends`, `provides`, `conflicts`, `options`, `source`, `sha256sums`), then functions as needed
-   (`prepare()`, `build()`, `package()`).
+3. **Write the PKGBUILD**: Use the `writing-pkgbuilds` skill for writing the PKGBUILD in NosArch's style.
 4. **Declare upstream.** Add one `# nosarch-upstream:` directive so the version checker works:
    `github <owner>/<repo>` when the app has GitHub releases, otherwise `json`, then `text`, and `regex` only as a
    last resort (fragile).
@@ -43,9 +40,9 @@ Before creating the package, verify that the package doesn't already exist in Ar
 
 Follow this output contract:
 
-- One sentence stating what package was added and from what source.
+- One sentence stating the package name and from what source.
 - Then exactly these sections, in this order:
-    - **Checks ran**: each command executed and its result.
+    - **Checks ran**: bulleted list of each command executed and its result.
     - **Follow-ups**: only what the user must still do (for example a root dry-run of decman).
       Omit the section when there is nothing to follow up on.
 - Do not narrate the PKGBUILD line by line or restate the workflow steps back to the user.

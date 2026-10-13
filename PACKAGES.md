@@ -156,7 +156,7 @@ Writing style:
   ([Upstream Directives](#upstream-directives)) as the comment block right after it.
 - Group the rest into two blocks, separated by a blank line:
     - Package info first, in this order: `pkgname`, `pkgdesc`, `pkgver`, `pkgrel`, `url`, `license`.
-    - Build info second, in this order: `arch`, `depends`, `provides`, `conflicts`, `options`, `source`, `sha256sums`.
+    - Build info second, in this order: `arch`, `depends`, `options`, `provides`, `conflicts`, `source`, `sha256sums`.
 - Then the functions, in this order, as needed: `prepare()`, `build()`, `package()`.
 - Always install the package's `LICENSE`/similar file under `/usr/share/licenses/$pkgname/`, even when `license=` is a
   standard SPDX identifier.
