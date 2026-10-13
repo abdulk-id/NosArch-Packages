@@ -5,7 +5,7 @@
 pkgname=pi-nosarch
 pkgdesc="Pi - minimal extensible terminal AI coding agent harness"
 pkgver=1.2.0
-pkgrel=1
+pkgrel=2
 url="https://pi.dev"
 license=('MIT')
 
@@ -18,17 +18,17 @@ optdepends=(
     'npm: installing npm-sourced Pi packages (pi install npm:...)'
     'git: installing git-sourced Pi packages (pi install git:...)'
 )
+options=('!strip' '!debug')
 provides=('pi')
 conflicts=('pi' 'pi-bin')
-options=('!strip' '!debug')
 source=(
     "https://github.com/earendil-works/pi/releases/download/v$pkgver/pi-linux-x64.tar.gz"
     "LICENSE::https://raw.githubusercontent.com/earendil-works/pi/v$pkgver/LICENSE"
+    "pi-wrapper.sh"
 )
-sha256sums=(
-    '00fc36cffdebceea5a48230da62cf3fb463178f8fe185766652f96002a246847'
-    '0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48'
-)
+sha256sums=('00fc36cffdebceea5a48230da62cf3fb463178f8fe185766652f96002a246847'
+            '0457f5bcec3b3b211605dfb5d1a49042fd638f3686a410fe099c24a25af13c48'
+            '18fb20e19703b0245676d916d1ffe7f589ba118bf6f44c18b00f30577ba6bc4f')
 
 package() {
     # Keep the vendor tree intact: the binary resolves theme/, docs/, export-html/, the wasm payload and the native
@@ -36,68 +36,9 @@ package() {
     install -d "$pkgdir/opt/$pkgname"
     cp -a --no-preserve=ownership "$srcdir/pi/." "$pkgdir/opt/$pkgname/"
 
-    # Self-update block. For a bundled-binary install, upstream already refuses `pi update` (prints "download from
-    # GitHub releases" and exits 1). Also nothing can write to root-owned /opt anyway. This wrapper shows a message
-    # naming pacman. Only updating pi itself is refused. `--extensions`, `--models` and package sources keep working.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/pi" <<'EOF'
-#!/bin/sh
-if [ "${1:-}" = "update" ]; then
-    # Scan a copy of the arguments ($@ is left untouched for the exec below).
-    wants_self=0
-    user_target=0
-    help=0
-    expect_value=0
-    first=1
-    for arg in "$@"; do
-        if [ "$first" -eq 1 ]; then
-            first=0 # the `update` word itself, which decides nothing
-            continue
-        fi
-        if [ "$expect_value" -eq 1 ]; then
-            # The value of --extension is a package source, so `pi update --extension self`
-            # updates an extension named self rather than Pi.
-            expect_value=0
-            user_target=1
-            continue
-        fi
-        case "$arg" in
-            -h|--help)
-                help=1
-                ;;
-            --extensions|--models)
-                user_target=1
-                ;;
-            --extension)
-                expect_value=1
-                user_target=1
-                ;;
-            --extension=*)
-                user_target=1
-                ;;
-            --self|--all)
-                wants_self=1
-                ;;
-            -*)
-                # Trust/force flags do not change which target the update selects.
-                ;;
-            self|pi)
-                wants_self=1
-                ;;
-            *)
-                user_target=1
-                ;;
-        esac
-    done
-
-    if [ "$help" -eq 0 ] && { [ "$wants_self" -eq 1 ] || [ "$user_target" -eq 0 ]; }; then
-        echo "pi update is blocked: this install is managed by pacman (pi-nosarch)." >&2
-        echo "Update or remove the package with pacman instead." >&2
-        echo "Updates confined to ~/.pi still work: pi update --extensions, --models, <source>." >&2
-        exit 1
-    fi
-fi
-exec /opt/pi-nosarch/pi "$@"
-EOF
+    # Self-update block:
+    # Upstream already refuses bare `pi update` on bundled installs; the wrapper names pacman and blocks self-targets only.
+    install -Dm755 "$srcdir/pi-wrapper.sh" "$pkgdir/usr/bin/pi"
 
     install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

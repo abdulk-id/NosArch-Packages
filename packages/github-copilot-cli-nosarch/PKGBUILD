@@ -5,23 +5,23 @@
 pkgname=github-copilot-cli-nosarch
 pkgdesc="GitHub Copilot CLI - Copilot coding agent in your terminal"
 pkgver=1.0.96
-pkgrel=1
+pkgrel=2
 url="https://github.com/github/copilot-cli"
 license=('LicenseRef-GitHub-Copilot-CLI')
 
 arch=('x86_64')
 depends=('bash' 'gcc-libs' 'glibc')
+options=('!strip' '!debug')
 provides=('copilot' 'github-copilot-cli')
 conflicts=('copilot' 'github-copilot-cli' 'github-copilot-cli-bin' 'github-copilot-cli-legacy')
-options=('!strip' '!debug')
 source=(
     "$pkgname-$pkgver.tar.gz::https://github.com/github/copilot-cli/releases/download/v$pkgver/copilot-linux-x64.tar.gz"
     "LICENSE.md::https://raw.githubusercontent.com/github/copilot-cli/v$pkgver/LICENSE.md"
+    "copilot-wrapper.sh"
 )
-sha256sums=(
-    '66b60b58b14d72390f30d6d7f8480d18a0f05c111d132e4ff8f92ae637d413f8'
-    'c694e2d9b3f3bb40704ca9bdc823dc90269999ab4c013dfd8a52c407046074b4'
-)
+sha256sums=('66b60b58b14d72390f30d6d7f8480d18a0f05c111d132e4ff8f92ae637d413f8'
+            'c694e2d9b3f3bb40704ca9bdc823dc90269999ab4c013dfd8a52c407046074b4'
+            '08d1592317ca3586295353075164f52ad42a2dea781e891d3053dcc2da20958c')
 
 build() {
     "$srcdir/copilot" completion bash > "$srcdir/copilot.bash" || true
@@ -32,31 +32,9 @@ build() {
 package() {
     install -Dm755 "$srcdir/copilot" "$pkgdir/opt/$pkgname/copilot"
 
-    # Self-update block.
-    # COPILOT_AUTO_UPDATE=false is GitHub's documented switch for stopping auto-updates, and it is load-bearing because
-    # on every ordinary invocation the binary otherwise resolves a newer cached package under `~/.cache/copilot/pkg`
-    # and runs that instead of the bundled one, so an auto-downloaded update takes over from pacman.
-    #
-    # `copilot update` is refused by name because it ignores the variable entirely: with COPILOT_AUTO_UPDATE=false it
-    # still contacts GitHub and reports the latest release. The name check is the only thing that stops it.
-    #
-    # The TUI's `/update` slash command cannot be blocked, but it is harmless here anyway. It downloads its package
-    # into the user cache, but a launch with the variable set ignores any newer cached package and runs the bundled
-    # one, which is what keeps pacman's version authoritative. Its attempt to replace process.execPath is aimed at this
-    # package's root-owned /opt binary and fails with EACCES, which the CLI reports rather than acting on.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/copilot" <<'EOF'
-#!/bin/sh
-case "${1:-}" in
-    update)
-        echo "copilot update is blocked: this install is managed by pacman (github-copilot-cli-nosarch)." >&2
-        echo "Update or remove the package with pacman instead." >&2
-        exit 1
-        ;;
-esac
-
-export COPILOT_AUTO_UPDATE=false
-exec /opt/github-copilot-cli-nosarch/copilot "$@"
-EOF
+    # Self-update block:
+    # COPILOT_AUTO_UPDATE=false stops the background cache takeover; `copilot update` is refused by name.
+    install -Dm755 "$srcdir/copilot-wrapper.sh" "$pkgdir/usr/bin/copilot"
 
     if [[ -s "$srcdir/copilot.bash" ]]; then
         install -Dm644 "$srcdir/copilot.bash" "$pkgdir/usr/share/bash-completion/completions/copilot"

@@ -1,0 +1,10 @@
+[Trigger]
+Operation = Install
+Operation = Upgrade
+Type = Package
+Target = t3code-cli-nosarch
+
+[Action]
+Description = Installing T3 Code background service for users...
+When = PostTransaction
+Exec = /usr/lib/t3code-cli-nosarch/service-hook.sh install

@@ -1,0 +1,9 @@
+[Trigger]
+Operation = Remove
+Type = Package
+Target = t3code-cli-nosarch
+
+[Action]
+Description = Removing T3 Code background service for users...
+When = PreTransaction
+Exec = /usr/lib/t3code-cli-nosarch/service-hook.sh uninstall

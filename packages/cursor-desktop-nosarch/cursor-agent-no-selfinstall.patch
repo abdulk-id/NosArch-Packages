@@ -39,12 +39,12 @@
 +		echo "To open IDE, use 'cursor' or 'cursor editor' command." 1>&2
 +		exit 1
  	fi
- 
+
  	# Check current cursor-agent version meets minimum version requirement
 -	OUTPUT=$({ ~/.local/bin/cursor-agent --min-version=2025.10.01 status; } 2>&1)
 +	OUTPUT=$({ "$agent_bin" --min-version=2025.10.01 status; } 2>&1)
  	EXIT_CODE=$?
- 
+
  	# Update and retry if version is too old or doesn't support --min-version
  	if { [ "$EXIT_CODE" -eq 2 ] || { [ "$EXIT_CODE" -eq 1 ] && echo "$OUTPUT" | grep -qi "unknown option"; }; }; then
  		echo "cursor-agent version is outdated, updating..."
@@ -61,7 +61,7 @@
  		if { [ "$EXIT_CODE2" -eq 2 ] || { [ "$EXIT_CODE2" -eq 1 ] && echo "$OUTPUT2" | grep -qi "unknown option"; }; }; then
  			echo "Error: cursor-agent version is too old. Please update with 'cursor-agent update'" 1>&2
 @@ -173,7 +171,7 @@
- 
+
  	# Version is sufficient, run cursor-agent
  	export CURSOR_CLI_COMPAT=1
 -	exec ~/.local/bin/cursor-agent "$@"

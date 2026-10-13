@@ -5,14 +5,14 @@
 pkgname=zeron-nosarch
 pkgdesc="A native control plane for Claude Code, Codex, Cursor, Devin and other coding agents."
 pkgver=0.2.112
-pkgrel=1
+pkgrel=2
 url="https://zeron.sh/"
 license=('MIT')
 
 arch=('x86_64')
 depends=('alsa-lib' 'glibc' 'hicolor-icon-theme' 'libgcc' 'libxcb' 'libxkbcommon' 'libxkbcommon-x11')
-provides=('zeron')
 options=('!strip' '!debug')
+provides=('zeron')
 source=(
     "zeron-$pkgver-linux-x86_64.tar.gz::https://github.com/zeronsh/zeron/releases/download/v$pkgver/zeron-$pkgver-linux-x86_64.tar.gz"
     "LICENSE::https://raw.githubusercontent.com/zeronsh/zeron/v$pkgver/LICENSE"
@@ -32,8 +32,6 @@ package() {
     install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/zeron.png" "$pkgdir/usr/share/icons/hicolor/512x512/apps/zeron.png"
 
     install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
-
-    # Third-party notices for fonts bundled into the binary (SIL OFL 1.1).
     install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/licenses/fonts/Geist-OFL.txt" \
         "$pkgdir/usr/share/licenses/$pkgname/fonts/Geist-OFL.txt"
     install -Dm644 "$srcdir/zeron-$pkgver-linux-x86_64/licenses/fonts/THIRD_PARTY_NOTICES.md" \

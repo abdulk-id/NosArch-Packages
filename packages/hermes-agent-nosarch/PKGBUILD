@@ -5,7 +5,7 @@
 pkgname=hermes-agent-nosarch
 pkgdesc="Hermes Agent - self-improving AI agent by Nous Research"
 pkgver=0.21.7
-pkgrel=1
+pkgrel=2
 url="https://github.com/NousResearch/hermes-agent"
 license=('MIT')
 
@@ -30,16 +30,24 @@ optdepends=(
     'chromium: local browser automation for the agent tools (or google-chrome)'
     'google-chrome: local browser automation for the agent tools (or chromium)'
 )
-provides=('hermes' 'hermes-agent' 'hermes-desktop' 'hermes-agent-desktop')
-conflicts=('hermes' 'hermes-agent' 'hermes-desktop' 'hermes-agent-desktop')
-options=('!strip' '!debug')
 # matrix pulls python-olm, which compiles a vendored libolm through CFFI and declares a
 # cmake_minimum_required older than CMake 4 accepts. npm is a separate package from nodejs on
 # Arch, and the TUI/web/desktop builds all drive it. gcc builds node-pty and the desktop app's
 # X11 helper. All build-time only.
 makedepends=('cmake' 'gcc' 'npm')
-source=("$pkgname-$pkgver.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('fcf5fc29d3088764a5a293910f75f43dc736b5655ed410d7339cf94cc1462459')
+options=('!strip' '!debug')
+provides=('hermes' 'hermes-agent' 'hermes-desktop' 'hermes-agent-desktop')
+conflicts=('hermes' 'hermes-agent' 'hermes-desktop' 'hermes-agent-desktop')
+source=(
+    "$pkgname-$pkgver.tar.gz::https://github.com/NousResearch/hermes-agent/archive/refs/tags/v$pkgver.tar.gz"
+    "hermes-wrapper.sh"
+    "hermes-desktop.sh"
+    "com.nousresearch.hermes.desktop"
+)
+sha256sums=('fcf5fc29d3088764a5a293910f75f43dc736b5655ed410d7339cf94cc1462459'
+            'b8d4aec2a603a8f2f7278062e0a46d199f60245a8036ade5807fca08dbf32b35'
+            '3eba54d3bed890a54b893bcf167d6998960aa37d1b26907da0fddaf10c14d196'
+            'a93c298abdfab21d8050c38b0e9179081b1816f35084bc3f21007fe9f122e8d0')
 
 build() {
     # The archive's top-level directory, named after the upstream repository, not after $pkgname.
@@ -194,64 +202,17 @@ package() {
     install -d "$pkgdir/opt"
     mv "$stage" "$payload"
 
-    # Only self-management is blocked: `hermes update` pulls into a git tree and
-    # `hermes uninstall` deletes the install root, and pacman owns both.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/hermes" <<'EOF'
-#!/bin/sh
-case "${1:-}" in
-    update|uninstall)
-        echo "hermes $1 is blocked: this install is managed by pacman (hermes-agent-nosarch)." >&2
-        echo "Upgrade or remove the package with pacman instead." >&2
-        exit 1
-        ;;
-esac
-exec /opt/hermes-agent-nosarch/libexec/hermes "$@"
-EOF
+    # Self-update block:
+    # `hermes update` and `hermes uninstall` would replace or delete the pacman-owned install tree.
+    install -Dm755 "$srcdir/hermes-wrapper.sh" "$pkgdir/usr/bin/hermes"
     ln -s "/opt/$pkgname/libexec/hermes-agent" "$pkgdir/usr/bin/hermes-agent"
     ln -s "/opt/$pkgname/libexec/hermes-acp" "$pkgdir/usr/bin/hermes-acp"
 
-    # The desktop app. `--skip-build` because the packaged Electron bundle is right there in the
-    # payload; without it `hermes desktop` would try to npm install and package into a
-    # root-owned /opt. The environment has to be set here rather than in the desktop entry:
-    # a desktop entry cannot export variables.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/hermes-desktop" <<'EOF'
-#!/bin/sh
-# Point the app at this package's agent instead of letting it bootstrap a private
-# Hermes tree into $HOME, which would be a second, unmanaged install.
-HERMES_DESKTOP_HERMES="${HERMES_DESKTOP_HERMES:-/usr/bin/hermes}"
-HERMES_DESKTOP_IS_PACKAGED=1
-export HERMES_DESKTOP_HERMES HERMES_DESKTOP_IS_PACKAGED
-
-if [ -z "${AGENT_BROWSER_EXECUTABLE_PATH:-}" ]; then
-    for browser in google-chrome-stable google-chrome chromium; do
-        if path=$(type -P "$browser"); then
-            AGENT_BROWSER_EXECUTABLE_PATH="$path"
-            export AGENT_BROWSER_EXECUTABLE_PATH
-            break
-        fi
-    done
-fi
-
-exec /opt/hermes-agent-nosarch/libexec/hermes desktop --skip-build "$@"
-EOF
-    # Named com.nousresearch.hermes.desktop on purpose: `hermes desktop` writes its own entry
-    # to ~/.local/share/applications under that exact id, and XDG resolves one id across both
-    # directories. Sharing the id keeps one "Hermes" in the app grid instead of two, and lets
-    # the user's copy shadow ours rather than fight it.
-    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/com.nousresearch.hermes.desktop" <<'EOF'
-[Desktop Entry]
-Type=Application
-Name=Hermes
-GenericName=Hermes Desktop
-Comment=Launch Hermes Desktop
-Exec=hermes-desktop %U
-Icon=hermes
-Terminal=false
-Categories=Utility;
-StartupNotify=true
-StartupWMClass=com.nousresearch.hermes
-MimeType=x-scheme-handler/hermes;
-EOF
+    # `--skip-build` uses the packaged Electron bundle; env vars belong in the launcher, not the desktop entry.
+    install -Dm755 "$srcdir/hermes-desktop.sh" "$pkgdir/usr/bin/hermes-desktop"
+    # Same desktop id as `hermes desktop` writes under ~/.local so one grid entry can shadow the other.
+    install -Dm644 "$srcdir/com.nousresearch.hermes.desktop" \
+        "$pkgdir/usr/share/applications/com.nousresearch.hermes.desktop"
     # The artwork is 1024x1024, so the themed directory has to say so or the shell scales it.
     install -Dm644 "$srctree/apps/desktop/assets/icon.png" "$pkgdir/usr/share/icons/hicolor/1024x1024/apps/hermes.png"
 

@@ -5,7 +5,7 @@
 pkgname=omp-nosarch
 pkgdesc="omp - a coding agent with the IDE wired in"
 pkgver=18.10.3
-pkgrel=1
+pkgrel=2
 url="https://omp.sh"
 license=('MIT')
 
@@ -20,19 +20,19 @@ optdepends=(
     'libpulse: speech output over pulseaudio (omp setup speech)'
     'xdg-desktop-portal: browser and file chooser portals'
 )
+options=('!strip' '!debug')
 provides=('oh-my-pi')
 conflicts=('oh-my-pi' 'oh-my-pi-bin')
-options=('!strip' '!debug')
 source=(
     "omp-linux-x64::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/omp-linux-x64"
     "LICENSE::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/LICENSE"
     "THIRD-PARTY-NOTICES.txt::https://github.com/can1357/oh-my-pi/releases/download/v$pkgver/THIRD-PARTY-NOTICES.txt"
+    "omp-wrapper.sh"
 )
-sha256sums=(
-    '366ffcda80db57b825921b6ff4b0e5e623bc62cf18478f2828cd8a322fc72ff9'
-    '16c45f9d667442781f03fa198914cc39abcaa48ec5ed8f644643e554ca2fbf63'
-    '768612d40a4d1788813b997b011290d0f08c426add452de6560bf227cd1fc29d'
-)
+sha256sums=('366ffcda80db57b825921b6ff4b0e5e623bc62cf18478f2828cd8a322fc72ff9'
+            '16c45f9d667442781f03fa198914cc39abcaa48ec5ed8f644643e554ca2fbf63'
+            '768612d40a4d1788813b997b011290d0f08c426add452de6560bf227cd1fc29d'
+            'fb8671506993d5febdc8143b2e57812f93807c026bd2ed74568f148705a2a052')
 
 build() {
     chmod +x "$srcdir/omp-linux-x64"
@@ -45,27 +45,9 @@ build() {
 package() {
     install -Dm755 "$srcdir/omp-linux-x64" "$pkgdir/opt/$pkgname/omp"
 
-    # Self-update block.
-    # `omp update` resolves its own launcher in PATH, decides it is a plain binary install and would overwrite that
-    # path in place, taking the pacman-managed version out from under pacman. It is refused by name.
-    # `omp update --plugins` (-l) only upgrades installed plugins under ~/.omp, so it still runs.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/omp" <<'EOF'
-#!/bin/sh
-if [ "${1:-}" = "update" ]; then
-    for arg in "$@"; do
-        case "$arg" in
-            -l|--plugins)
-                exec /opt/omp-nosarch/omp "$@"
-                ;;
-        esac
-    done
-    echo "omp update is blocked: this install is managed by pacman (omp-nosarch)." >&2
-    echo "Update or remove the package with pacman instead." >&2
-    echo "Plugins can be updated with: omp update --plugins." >&2
-    exit 1
-fi
-exec /opt/omp-nosarch/omp "$@"
-EOF
+    # Self-update block:
+    # `omp update` would overwrite the pacman-managed launcher in PATH; `omp update --plugins` still runs.
+    install -Dm755 "$srcdir/omp-wrapper.sh" "$pkgdir/usr/bin/omp"
 
     if [[ -s "$srcdir/omp.bash" ]]; then
         install -Dm644 "$srcdir/omp.bash" "$pkgdir/usr/share/bash-completion/completions/omp"

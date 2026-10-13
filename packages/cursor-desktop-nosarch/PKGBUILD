@@ -5,7 +5,7 @@
 pkgname=cursor-desktop-nosarch
 pkgdesc="AI-First Coding environment"
 pkgver=3.24.12
-pkgrel=1
+pkgrel=2
 url="https://cursor.com"
 license=('LicenseRef-Cursor-EULA')
 
@@ -13,9 +13,9 @@ arch=('x86_64')
 depends=('alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-libs' 'glib2' 'gtk3'
          'libxcb' 'libx11' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon'
          'libxkbfile' 'libxrandr' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'xdg-utils')
+options=('!strip' '!debug')
 provides=('cursor')
 conflicts=('cursor' 'cursor-bin' 'cursor-appimage' 'cursor-nosarch')
-options=('!strip' '!debug')
 _commit=37b865941ccb31e2fc90c685157534efca87f964
 source=(
     "$pkgname-$pkgver.deb::https://downloads.cursor.com/production/$_commit/linux/x64/deb/amd64/deb/cursor_${pkgver}_amd64.deb"
@@ -25,9 +25,8 @@ sha256sums=('880b5b69cd6cd79df4b81a778ea1f3429aaf775e771aab6c19c688de16a275f4'
             'fd87fda0714161b6029ca001b6add364d7f1d39c4792e60359985036b4b65017')
 
 package() {
-    # Unpack the Debian payload with libarchive (pacman's own dependency; it reads .xz natively),
-    # preserving upstream's FHS layout: /usr/share/cursor, the desktop entries, the pixmap icon
-    # and the shipped bash completion.
+    # Unpack the Debian payload with libarchive (pacman's own dependency; reads .xz natively), preserving upstream's
+    # FHS layout: /usr/share/cursor, the desktop entries, the pixmap icon and the shipped bash completion.
     bsdtar -xf "$srcdir/$pkgname-$pkgver.deb" -C "$srcdir"
     bsdtar -xf "$srcdir/data.tar.xz" -C "$pkgdir"
 
@@ -35,14 +34,11 @@ package() {
     install -d "$pkgdir/usr/bin"
     ln -s /usr/share/cursor/bin/cursor "$pkgdir/usr/bin/cursor"
 
-    # The launcher's `cursor agent` would otherwise install cursor-agent with
-    # `curl https://cursor.com/install | bash` into ~/.local/bin. NosArch pins and audits every
-    # package, so route to an installed cursor-agent (cursor-cli-nosarch first) instead.
+    # Self-update block:
+    # The launcher's `cursor agent` would curl-pipe-bash into ~/.local/bin; the patch routes to cursor-cli-nosarch.
     patch --directory="$pkgdir" --strip=1 --no-backup-if-mismatch \
         --input="$srcdir/cursor-agent-no-selfinstall.patch"
 
-    # LicenseRef-* obliges us to ship the license under /usr/share/licenses/$pkgname/, and
-    # upstream keeps its LICENSE.txt inside the app tree.
     install -Dm644 "$pkgdir/usr/share/cursor/resources/app/LICENSE.txt" \
         "$pkgdir/usr/share/licenses/$pkgname/LICENSE.txt"
 }

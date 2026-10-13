@@ -5,15 +5,15 @@
 pkgname=openchamber-nosarch
 pkgdesc="Open-source workspace for running and reviewing AI coding agents"
 pkgver=2.3.0
-pkgrel=1
+pkgrel=2
 url="https://openchamber.dev"
 license=('MIT')
 
 arch=('x86_64')
 depends=('fuse2' 'hicolor-icon-theme' 'zlib')
+options=('!strip' '!debug')
 provides=('openchamber')
 conflicts=('openchamber' 'openchamber-desktop' 'openchamber-desktop-git')
-options=('!strip' '!debug')
 source=(
     "OpenChamber-$pkgver-linux-x86_64.AppImage::https://github.com/openchamber/openchamber/releases/download/v$pkgver/OpenChamber-$pkgver-linux-x86_64.AppImage"
     "LICENSE::https://raw.githubusercontent.com/openchamber/openchamber/v$pkgver/LICENSE"

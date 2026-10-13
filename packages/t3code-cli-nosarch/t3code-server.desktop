@@ -1,0 +1,20 @@
+[Desktop Entry]
+Name=T3 Code (Web)
+Comment=Open T3 Code in the browser (service must already be running)
+Exec=t3code-web open
+TryExec=t3code-web
+Terminal=false
+Type=Application
+Icon=t3code-server
+Categories=Development;
+Actions=start-service;stop-service;
+
+[Desktop Action start-service]
+Name=Start T3 Code Service
+Icon=t3code-server
+Exec=t3code-web start
+
+[Desktop Action stop-service]
+Name=Stop T3 Code Service
+Icon=t3code-server
+Exec=t3code-web stop

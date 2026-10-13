@@ -5,23 +5,23 @@
 pkgname=mimocode-nosarch
 pkgdesc="MiMo Code - Xiaomi's agentic coding CLI"
 pkgver=0.1.15
-pkgrel=1
+pkgrel=2
 url="https://mimo.xiaomi.com/mimocode"
 license=('MIT')
 
 arch=('x86_64')
 depends=('bash' 'glibc')
+options=('!strip' '!debug')
 provides=('mimocode')
 conflicts=('mimocode' 'mimo-code-bin')
-options=('!strip' '!debug')
 source=(
     "mimocode-linux-x64.tar.gz::https://github.com/XiaomiMiMo/MiMo-Code/releases/download/v$pkgver/mimocode-linux-x64.tar.gz"
     "LICENSE::https://raw.githubusercontent.com/XiaomiMiMo/MiMo-Code/v$pkgver/LICENSE"
+    "mimo-wrapper.sh"
 )
-sha256sums=(
-    '3530927a2d69eb0f809c11f663ecd6939b82c0b598ff0fbe1f82f431d764ca0c'
-    'd7201a5532f4ce12324aec5469dc1dfe290654d085c2547bc7384932881ac448'
-)
+sha256sums=('3530927a2d69eb0f809c11f663ecd6939b82c0b598ff0fbe1f82f431d764ca0c'
+            'd7201a5532f4ce12324aec5469dc1dfe290654d085c2547bc7384932881ac448'
+            '471b1ac94093a4dc4ed78005b2f078810f8b68973ba2fc7e7ce1e105bed65212')
 
 prepare() {
     chmod +x "$srcdir/mimo"
@@ -30,19 +30,9 @@ prepare() {
 package() {
     install -Dm755 "$srcdir/mimo" "$pkgdir/opt/$pkgname/mimo"
 
-    # `mimo upgrade` replaces the binary in place and `mimo uninstall` removes its install root, so pacman has to
-    # keep ownership of both.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/mimo" <<'EOF'
-#!/bin/sh
-case "${1:-}" in
-    upgrade|uninstall)
-        echo "mimo $1 is blocked: this install is managed by pacman (mimocode-nosarch)." >&2
-        echo "Upgrade or remove the package with pacman instead." >&2
-        exit 1
-        ;;
-esac
-exec /opt/mimocode-nosarch/mimo "$@"
-EOF
+    # Self-update block:
+    # `mimo upgrade` and `mimo uninstall` would replace or remove the pacman-owned install.
+    install -Dm755 "$srcdir/mimo-wrapper.sh" "$pkgdir/usr/bin/mimo"
 
     # Best-effort: the yargs handler behind `mimo completion` emits its bash script for every shell argument, so only
     # bash gets a completion file.

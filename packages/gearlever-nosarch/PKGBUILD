@@ -5,7 +5,7 @@
 pkgname=gearlever-nosarch
 pkgdesc="Utility to manage AppImages with ease"
 pkgver=4.6.2
-pkgrel=1
+pkgrel=2
 url="https://gearlever.mijorus.it"
 license=('GPL-3.0-or-later')
 
@@ -16,11 +16,11 @@ depends=('7zip' 'binutils' 'dconf' 'file' 'glib2' 'gtk4' 'hicolor-icon-theme' 'l
 optdepends=(
     'dwarfs: extraction of dwarfs-compressed AppImages'
 )
-provides=('gearlever')
-conflicts=('gearlever' 'gearlever-git' 'gearlever-bin' 'gearlever-appimage')
-options=('!strip' '!debug')
 makedepends=('gettext' 'meson')
 checkdepends=('appstream' 'desktop-file-utils')
+options=('!strip' '!debug')
+provides=('gearlever')
+conflicts=('gearlever' 'gearlever-git' 'gearlever-bin' 'gearlever-appimage')
 # ftputil and desktop_entry_lib are hard imports with no official Arch package. Both go into the package's own
 # pkgdatadir, which gearlever.in puts on sys.path, so nothing reaches into the system site-packages.
 source=(

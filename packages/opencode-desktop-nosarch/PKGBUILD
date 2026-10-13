@@ -5,16 +5,16 @@
 pkgname=opencode-desktop-nosarch
 pkgdesc="Open source AI coding agent desktop app"
 pkgver=1.19.0
-pkgrel=1
+pkgrel=2
 url="https://opencode.ai"
 license=('MIT')
 
 arch=('x86_64')
 depends=('alsa-lib' 'at-spi2-core' 'gtk3' 'hicolor-icon-theme' 'libayatana-appindicator' 'libnotify'
          'libsecret' 'libxss' 'libxtst' 'nss' 'util-linux-libs' 'xdg-utils')
+options=('!strip' '!debug')
 provides=('opencode-desktop')
 conflicts=('opencode-desktop' 'opencode-desktop-bin' 'opencode-desktop-electron' 'opencode-desktop-electron-bin')
-options=('!strip' '!debug')
 source=(
     "$pkgname-$pkgver.deb::https://github.com/anomalyco/opencode/releases/download/v$pkgver/opencode-desktop-linux-amd64.deb"
     "LICENSE::https://raw.githubusercontent.com/anomalyco/opencode/v$pkgver/LICENSE"
@@ -29,21 +29,16 @@ package() {
     bsdtar -xf "$srcdir/$pkgname-$pkgver.deb" -C "$srcdir"
     bsdtar -xf "$srcdir/data.tar.xz" -C "$pkgdir"
 
-    # The deb's postinst never runs under pacman, which creates the launcher symlink.
-    # Named `opencode-desktop` rather than upstream's `ai.opencode.desktop`
+    # Self-update block:
+    # Without app-update.yml, electron-updater has no feed and cannot replace the pacman-managed install.
+    rm -f "$pkgdir/opt/OpenCode/resources/app-update.yml"
+
+    # Named `opencode-desktop` rather than upstream's `ai.opencode.desktop` so `uwsm app` passes
     install -d "$pkgdir/usr/bin"
     ln -s /opt/OpenCode/ai.opencode.desktop "$pkgdir/usr/bin/opencode-desktop"
 
-    # Upstream's executable is named "ai.opencode.desktop", and running the desktop entry with `uwsm app` passes its
-    # Exec line verbatim. uwsm takes any argument ending in ".desktop" for a desktop entry file, so it tries to parse
-    # the ELF as one and fails. Launch through the suffix-free /usr/bin symlink instead. The binary itself keeps its
-    # name, so StartupWMClass= and Icon= still match it.
     sed --in-place 's|^Exec=/opt/OpenCode/ai\.opencode\.desktop|Exec=opencode-desktop|' \
         "$pkgdir"/usr/share/applications/*.desktop
-
-    # Best-effort self-update block: electron-updater reads this feed and would replace the
-    # pacman-managed install. With the feed gone it finds no update source.
-    rm -f "$pkgdir/opt/OpenCode/resources/app-update.yml"
 
     install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }

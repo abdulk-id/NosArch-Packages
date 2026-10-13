@@ -5,16 +5,16 @@
 pkgname=grok-build-nosarch
 pkgdesc="Grok Build - xAI's terminal-based AI coding agent"
 pkgver=1.0.52
-pkgrel=1
+pkgrel=2
 url="https://x.ai/cli"
 license=('Apache-2.0')
 
 arch=('x86_64')
 # The release binary is fully statically linked (no ELF NEEDED entries), so it pulls in no shared libraries at runtime.
 depends=()
+options=('!strip' '!debug')
 provides=('grok')
 conflicts=('grok' 'grok-build' 'grok-build-bin')
-options=('!strip' '!debug')
 source=(
     "grok-$pkgver::https://x.ai/cli/grok-$pkgver-linux-x86_64"
     "LICENSE::https://raw.githubusercontent.com/xai-org/grok-build/main/LICENSE"
@@ -27,7 +27,6 @@ sha256sums=(
 build() {
     chmod +x "$srcdir/grok-$pkgver"
 
-    # Shell completions are best-effort. package() only installs the files that actually came out non-empty.
     "$srcdir/grok-$pkgver" completions bash > "$srcdir/grok.bash" || true
     "$srcdir/grok-$pkgver" completions zsh > "$srcdir/_grok" || true
     "$srcdir/grok-$pkgver" completions fish > "$srcdir/grok.fish" || true

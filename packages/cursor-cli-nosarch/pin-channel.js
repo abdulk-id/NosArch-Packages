@@ -1,15 +1,13 @@
 "use strict";
 
-// NosArch: pin Cursor CLI's release channel to `static` so a pacman-managed install never updates
-// itself.
+// NosArch: pin Cursor CLI's release channel to `static` so a pacman-managed install never updates itself.
 //
-// `static` is upstream's channel for packaged installs. Every update path checks it before touching
-// the network: the TUI's `/update` slash command, the background check a couple of seconds after
-// startup, the `update` command, and the status `/about` reports.
+// `static` is upstream's channel for packaged installs. Every update path checks it before touching the network:
+// the TUI's `/update` slash command, the background check, the `update` command, and the status `/about` reports.
 //
-// The channel lives in cli-config.json, resolved the way cursor-config/dist/paths.js does, and it
-// stays out of that file until somebody picks one. So only fill it in when it is absent: a channel
-// chosen with the hidden `agent set-channel` is the user's own call and is left alone.
+// The channel lives in cli-config.json, resolved the way cursor-config/dist/paths.js does, and it stays out of that
+// file until somebody picks one. So only fill it in when it is absent: a channel chosen with the hidden
+// `agent set-channel` is the user's own call and is left alone.
 //
 // Any failure here is swallowed on purpose. The launcher runs this before every CLI start, and a
 // config we cannot touch just means upstream behaviour, never a broken CLI.

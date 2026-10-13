@@ -5,22 +5,32 @@
 pkgname=t3code-cli-nosarch
 pkgdesc="Run the T3 Code server and web client"
 pkgver=0.0.45
-pkgrel=1
+pkgrel=2
 url="https://t3.codes"
 license=('MIT')
 
 arch=('x86_64')
-depends=('bash' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'shadow')
 # shadow: runuser in the libalpm hook helper
+depends=('bash' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'shadow')
 options=('!strip' '!debug')
 source=(
     "t3-$pkgver-linux-x64.tar.gz::https://github.com/pingdotgg/t3code/releases/download/v$pkgver/t3-$pkgver-linux-x64.tar.gz"
     "LICENSE::https://raw.githubusercontent.com/pingdotgg/t3code/v$pkgver/LICENSE"
+    "t3-wrapper.sh"
+    "t3code-web.sh"
+    "service-hook.sh"
+    "60-t3code-cli-nosarch-service.hook"
+    "60-t3code-cli-nosarch-service-remove.hook"
+    "t3code-server.desktop"
 )
-sha256sums=(
-    '10505ae74bc6a43cfab0fde0bf06a0e0d6862f74030591be994a640d48a0d6bd'
-    '935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43'
-)
+sha256sums=('10505ae74bc6a43cfab0fde0bf06a0e0d6862f74030591be994a640d48a0d6bd'
+            '935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43'
+            'a3921bf3eaa3b2c1aef53c10c1cef3e36371cf202e5acd1d91f00191cc937a32'
+            'a3f7381997cd13301675556995f2f00d36bd47fe17bd76b267c43950ad062331'
+            'db837f2ba53cf9395fef83de8eccdc3ddec173416e7ee0f1576d70a59d58ba3b'
+            '2f05b6dd44ba714bfdfb4d3949403739b4ad886eec8cdc4b0589f67373b687e8'
+            '8f0389016b1b5ba3c9490f8a82d860f0828bc28feae07b0c5c67cdc0ca6141e6'
+            'd7b713a6e523cab5567d21ce27abca202d0dcf8384fa6dd33dbd3ce2af44fc78')
 
 package() {
     # Keep the tree intact: t3 resolves client/, node_modules/ and resource-monitor/ as siblings of its own realpath
@@ -32,231 +42,19 @@ package() {
     # never touches them at runtime on Linux.
     rm -rf "$pkgdir/opt/$pkgname/node_modules/node-pty/deps/winpty"
 
-    # Block self-update paths that would move the service off the pacman-managed version (t3 update repoints
-    # t3code.service at a GitHub-pinned runtime). repointLauncher already leaves /usr/bin/t3 alone; this refuses the
-    # command so PATH stays authoritative. Everything else execs the real binary.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/t3" <<'EOF'
-#!/bin/sh
-case "${1:-}" in
-    update|uninstall)
-        echo "t3 $1 is blocked: this install is managed by pacman (t3code-cli-nosarch)." >&2
-        echo "Update or remove the package with pacman instead." >&2
-        exit 1
-        ;;
-esac
-exec /opt/t3code-cli-nosarch/t3 "$@"
-EOF
+    # Self-update block:
+    # `t3 update` repoints t3code.service at a GitHub runtime; the wrapper refuses update and uninstall by name.
+    install -Dm755 "$srcdir/t3-wrapper.sh" "$pkgdir/usr/bin/t3"
 
-    # Lifecycle is owned by the official `t3 service install` unit (t3code.service) or any other already-running t3
-    # server. This package only opens the UI and offers desktop entries for that unit, never starts an orphan process.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/t3code-web" <<'EOF'
-#!/bin/sh
-# Control the official T3 Code background service and open the web UI.
-# Never spawns a bare `t3 start`. It stacks processes with no stop path.
+    install -Dm755 "$srcdir/t3code-web.sh" "$pkgdir/usr/bin/t3code-web"
 
-set -eu
+    install -Dm755 "$srcdir/service-hook.sh" "$pkgdir/usr/lib/t3code-cli-nosarch/service-hook.sh"
+    install -Dm644 "$srcdir/60-t3code-cli-nosarch-service.hook" \
+        "$pkgdir/usr/share/libalpm/hooks/60-t3code-cli-nosarch-service.hook"
+    install -Dm644 "$srcdir/60-t3code-cli-nosarch-service-remove.hook" \
+        "$pkgdir/usr/share/libalpm/hooks/60-t3code-cli-nosarch-service-remove.hook"
 
-unit=t3code.service
-runtime="${T3CODE_HOME:-$HOME/.t3}/userdata/server-runtime.json"
-
-notify() {
-    msg=$1
-    if command -v notify-send >/dev/null 2>&1; then
-        notify-send -u critical "T3 Code" "$msg" 2>/dev/null || echo "$msg" >&2
-    else
-        echo "$msg" >&2
-    fi
-}
-
-# Prints origin if a live server (service, desktop app, or anything) wrote
-# server-runtime.json and its pid is still alive.
-live_origin() {
-    [ -f "$runtime" ] || return 1
-    pid=$(sed -n 's/.*"pid":[[:space:]]*\([0-9][0-9]*\).*/\1/p' "$runtime")
-    origin=$(sed -n 's/.*"origin":"\([^"]*\)".*/\1/p' "$runtime")
-    [ -n "${pid:-}" ] && [ -n "${origin:-}" ] || return 1
-    kill -0 "$pid" 2>/dev/null || return 1
-    printf '%s\n' "$origin"
-}
-
-wait_for_origin() {
-    i=0
-    while [ "$i" -lt 50 ]; do
-        if origin=$(live_origin); then
-            return 0
-        fi
-        i=$((i + 1))
-        sleep 0.1
-    done
-    return 1
-}
-
-open_ui() {
-    origin=$(live_origin) || {
-        notify "T3 Code server is not running. Use the Start T3 Code Service menu entry."
-        exit 1
-    }
-    exec xdg-open "$origin"
-}
-
-start_service() {
-    if ! systemctl --user start "$unit" 2>/dev/null; then
-        systemctl --user daemon-reload
-        systemctl --user reset-failed "$unit" 2>/dev/null || true
-        if ! systemctl --user start "$unit" 2>/dev/null; then
-            notify "t3code.service is not installed. Run: t3 service install"
-            exit 1
-        fi
-    fi
-    if wait_for_origin; then
-        exec xdg-open "$origin"
-    fi
-    notify "T3 Code service started but no server appeared yet. Check: t3 service status"
-    exit 1
-}
-
-stop_service() {
-    if ! systemctl --user stop "$unit" 2>/dev/null; then
-        notify "t3code.service is not installed or not loaded. Run: t3 service install"
-        exit 1
-    fi
-}
-
-status_service() {
-    exec systemctl --user status "$unit"
-}
-
-case "${1:-open}" in
-    open|"")
-        open_ui
-        ;;
-    start)
-        start_service
-        ;;
-    stop)
-        stop_service
-        ;;
-    status)
-        status_service
-        ;;
-    *)
-        echo "usage: t3code-web [open|start|stop|status]" >&2
-        exit 2
-        ;;
-esac
-EOF
-
-    # Hook helper: runs as root from libalpm. Installs/removes the official per-user t3code.service for every human
-    # account (single-user NosArch machines). Failures are warnings only so hooks cannot abort the transaction.
-    install -Dm755 /dev/stdin "$pkgdir/usr/lib/t3code-cli-nosarch/service-hook.sh" <<'EOF'
-#!/bin/sh
-# Pacman hook helper for t3code-cli-nosarch.
-# Usage: service-hook.sh install|uninstall
-
-set -u
-
-mode=${1:-}
-case "$mode" in
-    install|uninstall) ;;
-    *)
-        echo "usage: service-hook.sh install|uninstall" >&2
-        exit 2
-        ;;
-esac
-
-human_users() {
-    # UID >= 1000, home under /home or /var/home (NosArch is single-user; this still
-    # covers extra local accounts without touching system/root).
-    getent passwd | awk -F: '$3 >= 1000 && $6 ~ /^\/(var\/)?home\// { print $1 }'
-}
-
-run_as_user() {
-    user=$1
-    shift
-    uid=$(id -u "$user" 2>/dev/null) || return 1
-    home=$(getent passwd "$user" | cut -d: -f6)
-    [ -n "$home" ] || return 1
-
-    # systemctl --user needs the runtime dir; linger keeps user@.service alive
-    # after logout so install works from a pacman session.
-    loginctl enable-linger --no-ask-password "$user" 2>/dev/null || true
-
-    runuser -u "$user" -- env \
-        HOME="$home" \
-        USER="$user" \
-        LOGNAME="$user" \
-        XDG_RUNTIME_DIR="/run/user/$uid" \
-        PATH="/usr/local/bin:/usr/bin:/bin" \
-        t3 service "$mode"
-}
-
-status=0
-found=0
-for user in $(human_users); do
-    found=1
-    echo "t3code-cli-nosarch: t3 service $mode for $user"
-    if ! run_as_user "$user"; then
-        echo "t3code-cli-nosarch: t3 service $mode failed for $user (network required on first install)" >&2
-        status=1
-    fi
-done
-
-if [ "$found" -eq 0 ]; then
-    echo "t3code-cli-nosarch: no human users found; skipping t3 service $mode"
-fi
-
-# Never fail the pacman transaction (PostTransaction ignores exit status anyway;
-# PreTransaction without AbortOnFail only reports).
-exit 0
-EOF
-
-    install -Dm644 /dev/stdin "$pkgdir/usr/share/libalpm/hooks/60-t3code-cli-nosarch-service.hook" <<'EOF'
-[Trigger]
-Operation = Install
-Operation = Upgrade
-Type = Package
-Target = t3code-cli-nosarch
-
-[Action]
-Description = Installing T3 Code background service for users...
-When = PostTransaction
-Exec = /usr/lib/t3code-cli-nosarch/service-hook.sh install
-EOF
-
-    install -Dm644 /dev/stdin "$pkgdir/usr/share/libalpm/hooks/60-t3code-cli-nosarch-service-remove.hook" <<'EOF'
-[Trigger]
-Operation = Remove
-Type = Package
-Target = t3code-cli-nosarch
-
-[Action]
-Description = Removing T3 Code background service for users...
-When = PreTransaction
-Exec = /usr/lib/t3code-cli-nosarch/service-hook.sh uninstall
-EOF
-
-    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/t3code-server.desktop" <<'EOF'
-[Desktop Entry]
-Name=T3 Code (Web)
-Comment=Open T3 Code in the browser (service must already be running)
-Exec=t3code-web open
-TryExec=t3code-web
-Terminal=false
-Type=Application
-Icon=t3code-server
-Categories=Development;
-Actions=start-service;stop-service;
-
-[Desktop Action start-service]
-Name=Start T3 Code Service
-Icon=t3code-server
-Exec=t3code-web start
-
-[Desktop Action stop-service]
-Name=Stop T3 Code Service
-Icon=t3code-server
-Exec=t3code-web stop
-EOF
+    install -Dm644 "$srcdir/t3code-server.desktop" "$pkgdir/usr/share/applications/t3code-server.desktop"
 
     install -Dm644 "$srcdir/t3-$pkgver-linux-x64/client/favicon-16x16.png" \
         "$pkgdir/usr/share/icons/hicolor/16x16/apps/t3code-server.png"

@@ -5,47 +5,30 @@
 pkgname=claude-code-nosarch
 pkgdesc="Claude Code - Anthropic's agentic coding tool for the terminal"
 pkgver=2.1.296
-pkgrel=1
+pkgrel=2
 url="https://code.claude.com/docs/en/overview"
 license=('LicenseRef-Anthropic-Commercial-TOS')
 
 arch=('x86_64')
 depends=('bash' 'glibc')
+options=('!strip' '!debug')
 provides=('claude-code')
 conflicts=('claude-code')
-options=('!strip' '!debug')
 source=(
     "$pkgname-$pkgver.tar.gz::https://github.com/anthropics/claude-code/releases/download/v$pkgver/claude-linux-x64.tar.gz"
     "LICENSE.md::https://raw.githubusercontent.com/anthropics/claude-code/v$pkgver/LICENSE.md"
+    "claude-wrapper.sh"
 )
-sha256sums=(
-    '45fe2b33f5cbdd114309618970bcd90b8b163e34252d66cf100d7e068d9b831d'
-    '728158fd1037143fad6907e8fa34804177e598b7326519503fe83cafdef849e6'
-)
+sha256sums=('45fe2b33f5cbdd114309618970bcd90b8b163e34252d66cf100d7e068d9b831d'
+            '728158fd1037143fad6907e8fa34804177e598b7326519503fe83cafdef849e6'
+            '94381829093f800d88686fc7d3cbee22de931ac7c2b17dceca3e8f7bf1750c63')
 
 package() {
     install -Dm755 "$srcdir/claude" "$pkgdir/opt/$pkgname/claude"
 
-    # Self-update block.
-    # DISABLE_UPDATES is Anthropic's documented switch for stopping updates. It stops the background auto-updater and
-    # refuses both `claude update` and `claude install`.
-    #
-    # The name checks come first because DISABLE_UPDATES refuses with "contact your IT team", which is wrong advice
-    # on a machine where pacman owns the version.
-    install -Dm755 /dev/stdin "$pkgdir/usr/bin/claude" <<'EOF'
-#!/bin/sh
-case "${1:-}" in
-    update | upgrade | install)
-        echo "claude $1 is blocked: this install is managed by pacman (claude-code-nosarch)." >&2
-        echo "Update or remove the package with pacman instead." >&2
-        exit 1
-        ;;
-esac
+    # Self-update block:
+    # DISABLE_UPDATES stops the background auto-updater; `claude update`, `upgrade`, and `install` are refused by name.
+    install -Dm755 "$srcdir/claude-wrapper.sh" "$pkgdir/usr/bin/claude"
 
-export DISABLE_UPDATES=1
-exec /opt/claude-code-nosarch/claude "$@"
-EOF
-
-    # Upstream ships no license. LICENSE.md is a one-line notice pointing at Anthropic's Commercial TOS
     install -Dm644 "$srcdir/LICENSE.md" "$pkgdir/usr/share/licenses/$pkgname/LICENSE.md"
 }

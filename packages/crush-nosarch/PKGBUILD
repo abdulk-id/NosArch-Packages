@@ -5,16 +5,16 @@
 pkgname=crush-nosarch
 pkgdesc="Crush - a glamorous, terminal-first AI assistant for software development"
 pkgver=0.98.1
-pkgrel=1
+pkgrel=2
 url="https://charm.sh"
 license=('LicenseRef-FSL-1.1-MIT')
 
 arch=('x86_64')
-depends=()
 # The release binary is statically linked (no ELF NEEDED entries), so it pulls in no shared libraries at runtime.
+depends=()
+options=('!strip' '!debug')
 provides=('crush')
 conflicts=('crush' 'crush-bin')
-options=('!strip' '!debug')
 source=("crush-$pkgver-Linux-x86_64.tar.gz::https://github.com/charmbracelet/crush/releases/download/v$pkgver/crush_${pkgver}_Linux_x86_64.tar.gz")
 sha256sums=('d85d913effef350f0152f594a70bd9749ad455bf15af77bb0d2b731036079885')
 
@@ -23,8 +23,6 @@ package() {
 
     install -d "$pkgdir/usr/bin"
     ln -s "/opt/$pkgname/crush" "$pkgdir/usr/bin/crush"
-
-    # Crush has no self-updating
 
     install -Dm644 "$srcdir/crush_${pkgver}_Linux_x86_64/completions/crush.bash" \
         "$pkgdir/usr/share/bash-completion/completions/crush"

@@ -5,15 +5,15 @@
 pkgname=github-copilot-app-nosarch
 pkgdesc="Agent-native desktop app for finding, running, steering and landing work on GitHub"
 pkgver=1.1.29
-pkgrel=1
+pkgrel=2
 url="https://github.com/github/app"
 license=('LicenseRef-GitHub-Copilot-App')
 
 arch=('x86_64')
 depends=('gtk3' 'webkit2gtk-4.1' 'libayatana-appindicator' 'hicolor-icon-theme' 'libpulse' 'alsa-lib')
+options=('!strip' '!debug')
 provides=('github-copilot-app')
 conflicts=('github-copilot-app' 'github-copilot-app-bin' 'github-copilot-app-appimage' 'github-copilot-bin')
-options=('!strip' '!debug')
 source=(
     "$pkgname-$pkgver.deb::https://github.com/github/app/releases/download/v$pkgver/GitHub-Copilot-linux-x64.deb"
     "License.md::https://raw.githubusercontent.com/github/app/v$pkgver/License.md"
@@ -24,12 +24,11 @@ sha256sums=(
 )
 
 package() {
-    # Unpack the Debian payload with libarchive (pacman's own dependency; it reads .zst natively),
-    # preserving upstream's FHS layout. /usr/bin/github resolves its resources under
-    # "/usr/lib/GitHub Copilot" itself, so the tree is installed as shipped.
+    # Unpack the Debian payload with libarchive (pacman's own dependency; reads .zst natively), preserving upstream's
+    # FHS layout. /usr/bin/github resolves its resources under "/usr/lib/GitHub Copilot" itself, so the tree is
+    # installed as shipped.
     bsdtar -xf "$srcdir/$pkgname-$pkgver.deb" -C "$srcdir"
     bsdtar -xf "$srcdir/data.tar.zst" -C "$pkgdir"
 
-    # The .deb ships no license file; upstream's proprietary license is License.md at the release tag.
     install -Dm644 "$srcdir/License.md" "$pkgdir/usr/share/licenses/$pkgname/License.md"
 }
