@@ -4,8 +4,8 @@
 
 pkgname=openchamber-nosarch
 pkgdesc="Open-source workspace for running and reviewing AI coding agents"
-pkgver=2.3.0
-pkgrel=2
+pkgver=2.3.1
+pkgrel=1
 url="https://openchamber.dev"
 license=('MIT')
 
@@ -19,7 +19,7 @@ source=(
     "LICENSE::https://raw.githubusercontent.com/openchamber/openchamber/v$pkgver/LICENSE"
 )
 sha256sums=(
-    'ba326adaad5b682d5c272ecdf0c6b0166ddef2332bb7fccf2e008243dd134511'
+    'c0b2388e3845a751fc09c14d5837fbc845caaa3a1a8a46d31c72ab3a7c6439d0'
     '1f6e869a3feff6b4eb07907afc89176562b1f4324389f163d9fd94f09864b44e'
 )
 
@@ -39,8 +39,8 @@ package() {
     install -Dm644 "$srcdir/squashfs-root/openchamber.desktop" "$pkgdir/usr/share/applications/openchamber.desktop"
     sed --in-place 's|^Exec=AppRun |Exec=openchamber |' "$pkgdir/usr/share/applications/openchamber.desktop"
 
-    install -Dm644 "$srcdir/squashfs-root/usr/share/icons/hicolor/scalable/openchamber.svg" \
-        "$pkgdir/usr/share/icons/hicolor/scalable/apps/openchamber.svg"
+    install -Dm644 "$srcdir/squashfs-root/usr/share/icons/hicolor/512x512/apps/openchamber.png" \
+        "$pkgdir/usr/share/icons/hicolor/512x512/apps/openchamber.png"
 
     install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
 }
