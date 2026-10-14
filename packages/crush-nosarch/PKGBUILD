@@ -5,7 +5,7 @@
 pkgname=crush-nosarch
 pkgdesc="Crush - a glamorous, terminal-first AI assistant for software development"
 pkgver=0.98.1
-pkgrel=2
+pkgrel=3
 url="https://charm.sh"
 license=('LicenseRef-FSL-1.1-MIT')
 
@@ -15,7 +15,7 @@ depends=()
 options=('!strip' '!debug')
 provides=('crush')
 conflicts=('crush' 'crush-bin')
-source=("crush-$pkgver-Linux-x86_64.tar.gz::https://github.com/charmbracelet/crush/releases/download/v$pkgver/crush_${pkgver}_Linux_x86_64.tar.gz")
+source=("$pkgname-$pkgver.tar.gz::https://github.com/charmbracelet/crush/releases/download/v$pkgver/crush_${pkgver}_Linux_x86_64.tar.gz")
 sha256sums=('d85d913effef350f0152f594a70bd9749ad455bf15af77bb0d2b731036079885')
 
 package() {

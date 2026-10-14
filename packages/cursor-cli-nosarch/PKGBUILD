@@ -5,7 +5,7 @@
 pkgname=cursor-cli-nosarch
 pkgdesc="Cursor Agent - Cursor's terminal-based AI coding agent"
 pkgver=2026.10.14.0f9edde
-pkgrel=1
+pkgrel=2
 url="https://cursor.com/cli"
 license=('LicenseRef-Cursor-EULA')
 
@@ -18,7 +18,7 @@ conflicts=('cursor-cli')
 # the hash after a dot and this turns it back into the form the download URL uses.
 _upstream_ver="${pkgver%.*}-${pkgver##*.}"
 source=(
-    "agent-cli-package.tar.gz::https://downloads.cursor.com/lab/$_upstream_ver/linux/x64/agent-cli-package.tar.gz"
+    "$pkgname-$pkgver.tar.gz::https://downloads.cursor.com/lab/$_upstream_ver/linux/x64/agent-cli-package.tar.gz"
     "Cursor-TOS"
     "pin-channel.js"
     "cursor-agent-wrapper.sh"

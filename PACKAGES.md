@@ -157,16 +157,18 @@ Writing style:
 - Group the rest into two blocks, separated by a blank line:
     - Package info first, in this order: `pkgname`, `pkgdesc`, `pkgver`, `pkgrel`, `url`, `license`.
     - Build info second, in this order: `arch`, `depends`, `options`, `provides`, `conflicts`, `source`, `sha256sums`.
+- In `source=()`, rename every remote tarball or binary to `$pkgname-$pkgver.<file-extension>`. When a PKGBUILD needs
+  more than one remote archive, use `$pkgname-$pkgver-<label>.<ext>` for the extras.
 - Then the functions, in this order, as needed: `prepare()`, `build()`, `package()`.
+- Only add comments to explain non-standard behavior, and keep them concise.
+- As a catch-all, match the existing PKGBUILDs.
+
+NosArch's packaging conventions:
+
 - Always install the package's `LICENSE`/similar file under `/usr/share/licenses/$pkgname/`, even when `license=` is a
   standard SPDX identifier.
 - Always install shell completions if the package offers them. Guard the generation with `|| true` and only install a
   completion file if it came out non-empty. Missing completions should not fail the build.
-
-Match the existing PKGBUILDs.
-
-Only add comments to explain non-standard behavior, and keep them concise. Obvious commands and behavior already
-documented does not need comments (For example, if there are no shell completions, no need to comment saying so).
 
 #### 4. Declare where upstream lives
 

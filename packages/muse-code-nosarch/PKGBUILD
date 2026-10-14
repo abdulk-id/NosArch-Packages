@@ -5,7 +5,7 @@
 pkgname=muse-code-nosarch
 pkgdesc="Muse Code - Meta's terminal-based AI coding agent"
 pkgver=1.4.7.R6101.1
-pkgrel=1
+pkgrel=2
 url="https://dev.meta.ai/products/muse-code"
 license=('LicenseRef-Muse-Code')
 
@@ -23,7 +23,7 @@ conflicts=('muse-code' 'muse-code-bin' 'musecode')
 # build after a dot and this turns it back into the form the download URL uses.
 _upstream_ver="${pkgver%%.R*}-R${pkgver#*.R}"
 source=(
-    "muse-x86-linux::https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=$_upstream_ver&file=muse-x86-linux"
+    "$pkgname-$pkgver::https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=$_upstream_ver&file=muse-x86-linux"
     "LICENSE-README"
 )
 sha256sums=(
@@ -32,7 +32,7 @@ sha256sums=(
 )
 
 package() {
-    install -Dm755 "$srcdir/muse-x86-linux" "$pkgdir/opt/$pkgname/muse"
+    install -Dm755 "$srcdir/$pkgname-$pkgver" "$pkgdir/opt/$pkgname/muse"
 
     install -d "$pkgdir/usr/bin"
     ln -s "/opt/$pkgname/muse" "$pkgdir/usr/bin/muse"

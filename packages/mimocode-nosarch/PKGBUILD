@@ -5,7 +5,7 @@
 pkgname=mimocode-nosarch
 pkgdesc="MiMo Code - Xiaomi's agentic coding CLI"
 pkgver=0.1.15
-pkgrel=2
+pkgrel=3
 url="https://mimo.xiaomi.com/mimocode"
 license=('MIT')
 
@@ -15,7 +15,7 @@ options=('!strip' '!debug')
 provides=('mimocode')
 conflicts=('mimocode' 'mimo-code-bin')
 source=(
-    "mimocode-linux-x64.tar.gz::https://github.com/XiaomiMiMo/MiMo-Code/releases/download/v$pkgver/mimocode-linux-x64.tar.gz"
+    "$pkgname-$pkgver.tar.gz::https://github.com/XiaomiMiMo/MiMo-Code/releases/download/v$pkgver/mimocode-linux-x64.tar.gz"
     "LICENSE::https://raw.githubusercontent.com/XiaomiMiMo/MiMo-Code/v$pkgver/LICENSE"
     "mimo-wrapper.sh"
 )

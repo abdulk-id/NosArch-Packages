@@ -5,7 +5,7 @@
 pkgname=grok-build-nosarch
 pkgdesc="Grok Build - xAI's terminal-based AI coding agent"
 pkgver=1.0.52
-pkgrel=2
+pkgrel=3
 url="https://x.ai/cli"
 license=('Apache-2.0')
 
@@ -16,7 +16,7 @@ options=('!strip' '!debug')
 provides=('grok')
 conflicts=('grok' 'grok-build' 'grok-build-bin')
 source=(
-    "grok-$pkgver::https://x.ai/cli/grok-$pkgver-linux-x86_64"
+    "$pkgname-$pkgver::https://x.ai/cli/grok-$pkgver-linux-x86_64"
     "LICENSE::https://raw.githubusercontent.com/xai-org/grok-build/main/LICENSE"
 )
 sha256sums=(
@@ -25,15 +25,15 @@ sha256sums=(
 )
 
 build() {
-    chmod +x "$srcdir/grok-$pkgver"
+    chmod +x "$srcdir/$pkgname-$pkgver"
 
-    "$srcdir/grok-$pkgver" completions bash > "$srcdir/grok.bash" || true
-    "$srcdir/grok-$pkgver" completions zsh > "$srcdir/_grok" || true
-    "$srcdir/grok-$pkgver" completions fish > "$srcdir/grok.fish" || true
+    "$srcdir/$pkgname-$pkgver" completions bash > "$srcdir/grok.bash" || true
+    "$srcdir/$pkgname-$pkgver" completions zsh > "$srcdir/_grok" || true
+    "$srcdir/$pkgname-$pkgver" completions fish > "$srcdir/grok.fish" || true
 }
 
 package() {
-    install -Dm755 "$srcdir/grok-$pkgver" "$pkgdir/opt/$pkgname/grok"
+    install -Dm755 "$srcdir/$pkgname-$pkgver" "$pkgdir/opt/$pkgname/grok"
 
     install -d "$pkgdir/usr/bin"
     ln -s "/opt/$pkgname/grok" "$pkgdir/usr/bin/grok"

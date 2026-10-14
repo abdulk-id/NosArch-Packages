@@ -5,7 +5,7 @@
 pkgname=openchamber-nosarch
 pkgdesc="Open-source workspace for running and reviewing AI coding agents"
 pkgver=2.3.2
-pkgrel=1
+pkgrel=2
 url="https://openchamber.dev"
 license=('MIT')
 
@@ -15,7 +15,7 @@ options=('!strip' '!debug')
 provides=('openchamber')
 conflicts=('openchamber' 'openchamber-desktop' 'openchamber-desktop-git')
 source=(
-    "OpenChamber-$pkgver-linux-x86_64.AppImage::https://github.com/openchamber/openchamber/releases/download/v$pkgver/OpenChamber-$pkgver-linux-x86_64.AppImage"
+    "$pkgname-$pkgver.AppImage::https://github.com/openchamber/openchamber/releases/download/v$pkgver/OpenChamber-$pkgver-linux-x86_64.AppImage"
     "LICENSE::https://raw.githubusercontent.com/openchamber/openchamber/v$pkgver/LICENSE"
 )
 sha256sums=(
@@ -24,12 +24,12 @@ sha256sums=(
 )
 
 prepare() {
-    chmod +x "$srcdir/OpenChamber-$pkgver-linux-x86_64.AppImage"
-    "$srcdir/OpenChamber-$pkgver-linux-x86_64.AppImage" --appimage-extract >/dev/null
+    chmod +x "$srcdir/$pkgname-$pkgver.AppImage"
+    "$srcdir/$pkgname-$pkgver.AppImage" --appimage-extract >/dev/null
 }
 
 package() {
-    install -Dm755 "$srcdir/OpenChamber-$pkgver-linux-x86_64.AppImage" "$pkgdir/opt/$pkgname/openchamber.AppImage"
+    install -Dm755 "$srcdir/$pkgname-$pkgver.AppImage" "$pkgdir/opt/$pkgname/openchamber.AppImage"
 
     install -d "$pkgdir/usr/bin"
     ln -s "/opt/$pkgname/openchamber.AppImage" "$pkgdir/usr/bin/openchamber"

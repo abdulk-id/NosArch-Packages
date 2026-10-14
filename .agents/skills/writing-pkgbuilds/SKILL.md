@@ -8,8 +8,8 @@ description: Write a PKGBUILD following NosArch's styling. Use when asked to wri
 Writing style:
 
 - `# Maintainer: NosArch` as the first line.
-- The `# nosarch-upstream:` directive ([Upstream Directives](PACKAGES.md#upstream-directives)) right after the blank line after
-  the maintainer line.
+- The `# nosarch-upstream:` directive ([Upstream Directives](PACKAGES.md#upstream-directives)) right after the blank
+  line after the maintainer line.
 - Variables:
     - Package vars first, in this order: `pkgname`, `pkgdesc`, `pkgver`, `pkgrel`, `url`, `license`.
     - Build vars second, in this order:
@@ -23,6 +23,8 @@ Writing style:
         - `conflicts` (if any),
         - `source`,
         - `sha256sums`
+    - In `source=()`, rename every remote tarball or binary to `$pkgname-$pkgver.<file-extension>`. When a PKGBUILD
+      needs more than one remote archive, use `$pkgname-$pkgver-<label>.<ext>` for the extras.
 - Then the functions, in this order, as needed:
     - `prepare()` - Pre-processing, such as unpacking sources, applying patches etc.
     - `build()` - Building the binaries/executables.

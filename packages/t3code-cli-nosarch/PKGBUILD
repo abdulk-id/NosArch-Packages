@@ -5,7 +5,7 @@
 pkgname=t3code-cli-nosarch
 pkgdesc="Run the T3 Code server and web client"
 pkgver=0.0.45
-pkgrel=2
+pkgrel=3
 url="https://t3.codes"
 license=('MIT')
 
@@ -14,7 +14,7 @@ arch=('x86_64')
 depends=('bash' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'shadow')
 options=('!strip' '!debug')
 source=(
-    "t3-$pkgver-linux-x64.tar.gz::https://github.com/pingdotgg/t3code/releases/download/v$pkgver/t3-$pkgver-linux-x64.tar.gz"
+    "$pkgname-$pkgver.tar.gz::https://github.com/pingdotgg/t3code/releases/download/v$pkgver/t3-$pkgver-linux-x64.tar.gz"
     "LICENSE::https://raw.githubusercontent.com/pingdotgg/t3code/v$pkgver/LICENSE"
     "t3-wrapper.sh"
     "t3code-web.sh"
