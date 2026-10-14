@@ -38,18 +38,24 @@ A run with both errors and warnings exits 1.
 import argparse
 import contextlib
 import dataclasses
+import http.client
+import io
 import json
 import os
 import pwd
 import re
 import shutil
+import ssl
 import subprocess
 import sys
 import tempfile
+import threading
 import urllib.error
-import urllib.request
+from urllib.parse import urljoin, urlparse
+from concurrent.futures import ThreadPoolExecutor
+from functools import partial
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any, Callable, Iterator, TypeVar
 
 PACKAGES_DIR: Path = Path(__file__).resolve().parent / "packages"
 
@@ -59,8 +65,17 @@ EXIT_WARNING: int = 2
 
 # Lines of `namcap --list` look like "elfpaths  : Check about ELF files ...".
 NAMCAP_RULE_PATTERN: re.Pattern[str] = re.compile(r"^(\S+)\s+: ", re.MULTILINE)
+UPSTREAM_DIRECTIVE_PATTERN: re.Pattern[str] = re.compile(
+    r"^#\s*nosarch-upstream:\s*(.+?)\s*$", re.MULTILINE
+)
+
+_NAMCAP_ALL_RULES: set[str] | None = None
+_NAMCAP_ACTIVE_RULES: list[str] | None = None
+
+T = TypeVar("T")
 
 HTTP_TIMEOUT: int = 30
+HTTP_MAX_REDIRECTS: int = 10
 USER_AGENT: str = "nosarch-packages-tool"
 
 # Remote sources must be pinned. A local file shipped next to the PKGBUILD
@@ -219,9 +234,7 @@ def read_srcinfo(package_dir: Path) -> dict[str, list[str]]:
 
 def read_upstream(package_dir: Path) -> Upstream | None:
     """Parses the `# nosarch-upstream:` directive from a PKGBUILD, if present."""
-    match: re.Match[str] | None = re.compile(r"^#\s*nosarch-upstream:\s*(.+?)\s*$", re.MULTILINE).search(
-        (package_dir / "PKGBUILD").read_text()
-    )
+    match: re.Match[str] | None = UPSTREAM_DIRECTIVE_PATTERN.search((package_dir / "PKGBUILD").read_text())
 
     if match is None:
         return None
@@ -245,18 +258,123 @@ def read_upstream(package_dir: Path) -> Upstream | None:
     return Upstream(kind=kind, url=parts[1], selector=" ".join(parts[2:]))
 
 
+class _HttpSession:
+    """
+    Reuses keep-alive connections per (scheme, host, port).
+
+    One session per thread so parallel package checks do not share a connection.
+    """
+
+    def __init__(self) -> None:
+        self._connections: dict[tuple[str, str, int], http.client.HTTPConnection] = {}
+
+    def _drop(self, key: tuple[str, str, int]) -> None:
+        conn = self._connections.pop(key, None)
+
+        if conn is not None:
+            with contextlib.suppress(Exception):
+                conn.close()
+
+    def _connection(self, scheme: str, host: str, port: int) -> http.client.HTTPConnection:
+        key = (scheme, host, port)
+        conn = self._connections.get(key)
+
+        if conn is not None:
+            return conn
+
+        if scheme == "https":
+            conn = http.client.HTTPSConnection(host, port, timeout=HTTP_TIMEOUT)
+        elif scheme == "http":
+            conn = http.client.HTTPConnection(host, port, timeout=HTTP_TIMEOUT)
+        else:
+            raise ValueError(f"unsupported URL scheme '{scheme}'")
+
+        self._connections[key] = conn
+        return conn
+
+    def get(self, url: str) -> str:
+        current: str = url
+
+        for _ in range(HTTP_MAX_REDIRECTS):
+            parsed = urlparse(current)
+
+            if parsed.scheme not in ("http", "https"):
+                raise ValueError(f"unsupported URL scheme '{parsed.scheme}'")
+
+            host: str | None = parsed.hostname
+
+            if host is None:
+                raise ValueError(f"URL has no host: {url}")
+
+            port: int = parsed.port if parsed.port is not None else (443 if parsed.scheme == "https" else 80)
+            path: str = parsed.path or "/"
+
+            if parsed.query:
+                path = f"{path}?{parsed.query}"
+
+            key: tuple[str, str, int] = (parsed.scheme, host, port)
+            headers: dict[str, str] = {"User-Agent": USER_AGENT, "Connection": "keep-alive"}
+
+            try:
+                conn = self._connection(parsed.scheme, host, port)
+                conn.request("GET", path, headers=headers)
+                response = conn.getresponse()
+                body: bytes = response.read()
+
+                if 300 <= response.status < 400:
+                    location: str | None = response.getheader("Location")
+
+                    if not location:
+                        raise urllib.error.HTTPError(
+                            current, response.status, response.reason, response.headers, None
+                        )
+
+                    current = urljoin(current, location)
+                    continue
+
+                if response.status >= 400:
+                    self._drop(key)
+                    raise urllib.error.HTTPError(
+                        current, response.status, response.reason, response.headers, io.BytesIO(body)
+                    )
+
+                charset: str = response.headers.get_content_charset(failobj="utf-8")
+                return body.decode(charset)
+            except (http.client.HTTPException, OSError, TimeoutError, ssl.SSLError):
+                self._drop(key)
+                raise
+
+        raise ValueError(f"too many redirects for {url}")
+
+
+_thread_http_sessions: threading.local = threading.local()
+
+
+def _http_session() -> _HttpSession:
+    session: _HttpSession | None = getattr(_thread_http_sessions, "session", None)
+
+    if session is None:
+        session = _HttpSession()
+        _thread_http_sessions.session = session
+
+    return session
+
+
 def fetch(url: str) -> str:
     """GETs a URL and returns the body as text."""
-    request: urllib.request.Request = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-
-    with urllib.request.urlopen(request, timeout=HTTP_TIMEOUT) as response:
-        return response.read().decode()
+    return _http_session().get(url)
 
 
-def upstream_version(upstream: Upstream) -> str:
+def upstream_version(upstream: Upstream, body: str | None = None) -> str:
     """Resolves the current upstream version. Raises `ValueError` if it cannot."""
-    body: str = fetch(upstream.url)
+    if body is None:
+        body = fetch(upstream.url)
 
+    return upstream_version_from_body(upstream, body)
+
+
+def upstream_version_from_body(upstream: Upstream, body: str) -> str:
+    """Parses an upstream version from a response body already fetched."""
     if upstream.kind == "github":
         tag: Any = json.loads(body).get("tag_name")
 
@@ -352,12 +470,30 @@ def check_fields(package_dir: Path, fields: dict[str, list[str]]) -> tuple[list[
 
 
 def namcap_rules() -> set[str]:
-    """Every rule name namcap knows about, from `namcap --list`."""
+    """Every rule name namcap knows about, from `namcap --list` (cached for the process)."""
+    global _NAMCAP_ALL_RULES
+
+    if _NAMCAP_ALL_RULES is not None:
+        return _NAMCAP_ALL_RULES
+
     completed: subprocess.CompletedProcess[str] = subprocess.run(
         ["namcap", "--list"], capture_output=True, text=True, check=False
     )
 
-    return {match.group(1) for match in NAMCAP_RULE_PATTERN.finditer(completed.stdout)}
+    _NAMCAP_ALL_RULES = {match.group(1) for match in NAMCAP_RULE_PATTERN.finditer(completed.stdout)}
+    return _NAMCAP_ALL_RULES
+
+
+def active_namcap_rules() -> list[str]:
+    """namcap rules to run, excluding noise we cannot fix on repackaged binaries."""
+    global _NAMCAP_ACTIVE_RULES
+
+    if _NAMCAP_ACTIVE_RULES is not None:
+        return _NAMCAP_ACTIVE_RULES
+
+    rules: set[str] = namcap_rules() - set(NAMCAP_EXCLUDED_RULES)
+    _NAMCAP_ACTIVE_RULES = sorted(rules)
+    return _NAMCAP_ACTIVE_RULES
 
 
 def run_namcap(target: Path) -> list[str]:
@@ -366,13 +502,13 @@ def run_namcap(target: Path) -> list[str]:
     # `active_modules.update(modules)` inside the per-rule loop, re-adding
     # everything it just removed (see /usr/lib/python3*/site-packages/namcap.py).
     # `--rules` has no such bug, so select the complement instead.
-    rules: set[str] = namcap_rules() - set(NAMCAP_EXCLUDED_RULES)
+    rules: list[str] = active_namcap_rules()
 
     if not rules:
         return ["could not determine namcap's rule list"]
 
     completed: subprocess.CompletedProcess[str] = subprocess.run(
-        ["namcap", f"--rules={','.join(sorted(rules))}", str(target)], capture_output=True, text=True, check=False
+        ["namcap", f"--rules={','.join(rules)}", str(target)], capture_output=True, text=True, check=False
     )
 
     findings: list[str] = []
@@ -551,7 +687,7 @@ def _pkgbuild_variables(text: str) -> dict[str, str]:
 
 
 def _sync_json_variables(
-    text: str, fields: dict[str, list[str]], upstream: Upstream
+    text: str, fields: dict[str, list[str]], upstream: Upstream, body: str | None = None
 ) -> tuple[str, list[str], list[str]]:
     """
     Best-effort sync of extra variables (like `_commit`) a `json` endpoint embeds
@@ -562,7 +698,9 @@ def _sync_json_variables(
     we can rewrite (`_name`'s old value was that segment) or something to do by hand.
     """
     try:
-        data: Any = json.loads(fetch(upstream.url))
+        if body is None:
+            body = fetch(upstream.url)
+        data: Any = json.loads(body)
     except (urllib.error.URLError, OSError, ValueError) as error:
         return text, [], [f"could not re-fetch endpoint to sync extra variables: {error}"]
 
@@ -656,8 +794,11 @@ def update_package(directory: Path, dry_run: bool, quiet: bool) -> str:
             print("    no '# nosarch-upstream:' directive, skipping")
         return "skipped"
 
+    upstream_body: str | None = None
+
     try:
-        upstream_ver: str = upstream_version(upstream)
+        upstream_body = fetch(upstream.url)
+        upstream_ver: str = upstream_version_from_body(upstream, upstream_body)
     except (urllib.error.URLError, OSError) as error:
         print(f"    warning: upstream lookup failed: {error}")
         return "needs-manual"
@@ -706,7 +847,7 @@ def update_package(directory: Path, dry_run: bool, quiet: bool) -> str:
             continue
 
         if upstream.kind == "json":
-            text, synced, manual = _sync_json_variables(text, fields, upstream)
+            text, synced, manual = _sync_json_variables(text, fields, upstream, body=upstream_body)
 
             for note in manual:
                 print(f"    note: {note}")
@@ -793,6 +934,50 @@ def _env_truthy(name: str) -> bool:
     return value in ("1", "true", "yes", "on")
 
 
+def _parallel_workers(count: int, heavy: bool = False) -> int:
+    if count <= 1:
+        return 1
+
+    limit: int = os.cpu_count() or 1
+
+    # Full builds download large payloads; too much overlap thrashes disk and memory.
+    if heavy:
+        limit = min(limit, 2)
+
+    return min(count, limit)
+
+
+def map_package_dirs(
+    directories: list[Path],
+    worker: Callable[[Path], T],
+    label: str,
+    quiet: bool,
+    heavy: bool = False,
+) -> list[T]:
+    """
+    Runs `worker` on each package directory.
+
+    Independent packages are checked concurrently so `makepkg` and network I/O can overlap.
+    """
+    if len(directories) <= 1:
+        results: list[T] = []
+
+        for index, directory in enumerate(directories, start=1):
+            if not quiet:
+                print(f"[{label}] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
+            results.append(worker(directory))
+
+        return results
+
+    workers: int = _parallel_workers(len(directories), heavy=heavy)
+
+    if not quiet:
+        print(f"[{label}] Checking {len(directories)} package(s) ({workers} at a time)...", flush=True)
+
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        return list(pool.map(worker, directories))
+
+
 def _should_validate_after_update(updated: list[Path], dry_run: bool, quiet: bool) -> bool:
     if dry_run or not updated:
         return False
@@ -829,12 +1014,9 @@ def validate_directories(directories: list[Path], build: bool, quiet: bool) -> i
         elif not build:
             print("[PACKAGES] NOTE: pass --build to let namcap audit 'depends'.")
 
-    results: list[Result] = []
-
-    for index, directory in enumerate(directories, start=1):
-        if not quiet:
-            print(f"[PACKAGES] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
-        results.append(validate_package(directory, build, have_namcap, quiet=quiet))
+    inner_quiet: bool = quiet or len(directories) > 1
+    worker = partial(validate_package, build=build, have_namcap=have_namcap, quiet=inner_quiet)
+    results: list[Result] = map_package_dirs(directories, worker, "PACKAGES", quiet, heavy=build)
 
     report_validate(results, quiet)
 
@@ -897,12 +1079,9 @@ def cmd_refresh(args: argparse.Namespace) -> int:
             print("[PACKAGES] No custom packages found.")
         return EXIT_OK
 
-    results: list[Result] = []
-
-    for index, directory in enumerate(directories, start=1):
-        if not args.quiet:
-            print(f"[PACKAGES] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
-        results.append(refresh_package(directory, quiet=args.quiet))
+    inner_quiet: bool = args.quiet or len(directories) > 1
+    worker = partial(refresh_package, quiet=inner_quiet)
+    results: list[Result] = map_package_dirs(directories, worker, "PACKAGES", args.quiet)
 
     report_refresh(results, args.quiet)
 
@@ -943,11 +1122,28 @@ def cmd_update(args: argparse.Namespace) -> int:
     outcomes: dict[str, int] = {"current": 0, "updated": 0, "skipped": 0, "needs-manual": 0, "failed": 0}
     updated_directories: list[Path] = []
 
-    for index, directory in enumerate(directories, start=1):
-        if not args.quiet:
-            print(f"[UPDATE] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
+    def run_update(directory: Path) -> tuple[Path, str]:
+        inner_quiet: bool = args.quiet or len(directories) > 1
+        return directory, update_package(directory, args.dry_run, inner_quiet)
 
-        outcome: str = update_package(directory, args.dry_run, args.quiet)
+    if not args.quiet and len(directories) > 1:
+        print(
+            f"[UPDATE] Checking {len(directories)} package(s) ({_parallel_workers(len(directories))} at a time)...",
+            flush=True,
+        )
+
+    if len(directories) <= 1:
+        update_results: list[tuple[Path, str]] = []
+
+        for index, directory in enumerate(directories, start=1):
+            if not args.quiet:
+                print(f"[UPDATE] Checking {directory.name} ({index}/{len(directories)})...", flush=True)
+            update_results.append(run_update(directory))
+    else:
+        with ThreadPoolExecutor(max_workers=_parallel_workers(len(directories))) as pool:
+            update_results = list(pool.map(run_update, directories))
+
+    for directory, outcome in update_results:
         outcomes[outcome] += 1
 
         if outcome == "updated":
