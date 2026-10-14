@@ -1,0 +1,41 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: json https://api.meta.ai/muse-code/channels/muse-stable version
+
+pkgname=muse-code-nosarch
+pkgdesc="Muse Code - Meta's terminal-based AI coding agent"
+pkgver=1.4.7.R6101.1
+pkgrel=1
+url="https://dev.meta.ai/products/muse-code"
+license=('LicenseRef-Muse-Code')
+
+arch=('x86_64')
+# Statically linked (no ELF NEEDED entries); the one file it reads outside itself is the system trust store.
+depends=('ca-certificates')
+optdepends=(
+    'git: repository integration and session worktrees'
+    'bubblewrap: system sandbox backend (an embedded copy is used when it is absent)'
+)
+options=('!strip' '!debug')
+provides=('muse-code')
+conflicts=('muse-code' 'muse-code-bin' 'musecode')
+# Upstream versions are `1.4.7-R6101.1` (release + build) and pkgver may not contain hyphens, so pkgver carries the
+# build after a dot and this turns it back into the form the download URL uses.
+_upstream_ver="${pkgver%%.R*}-R${pkgver#*.R}"
+source=(
+    "muse-x86-linux::https://lookaside.facebook.com/lookaside/muse/download/?channel=muse&version=$_upstream_ver&file=muse-x86-linux"
+    "LICENSE-README"
+)
+sha256sums=(
+    '36e3dac91f56c15572b95be55d70ee9fd9685cd9ab49f747bab4746c8d7c2518'
+    '5c4f8cfa1fb7f735e79ffe10bf07672b95fcfe648747bad6a902ecb56f598372'
+)
+
+package() {
+    install -Dm755 "$srcdir/muse-x86-linux" "$pkgdir/opt/$pkgname/muse"
+
+    install -d "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/muse" "$pkgdir/usr/bin/muse"
+
+    install -Dm644 "$srcdir/LICENSE-README" "$pkgdir/usr/share/licenses/$pkgname/README"
+}
