@@ -4,8 +4,8 @@
 
 pkgname=hermes-agent-nosarch
 pkgdesc="Hermes Agent - self-improving AI agent by Nous Research"
-pkgver=0.21.7
-pkgrel=2
+pkgver=0.22.0
+pkgrel=1
 url="https://github.com/NousResearch/hermes-agent"
 license=('MIT')
 
@@ -44,7 +44,7 @@ source=(
     "hermes-desktop.sh"
     "com.nousresearch.hermes.desktop"
 )
-sha256sums=('fcf5fc29d3088764a5a293910f75f43dc736b5655ed410d7339cf94cc1462459'
+sha256sums=('61333ab64f7ad728bc265d103fd73b2eb4b936f9c8d9fe3ccf2531ad955e96a1'
             'b8d4aec2a603a8f2f7278062e0a46d199f60245a8036ade5807fca08dbf32b35'
             '3eba54d3bed890a54b893bcf167d6998960aa37d1b26907da0fddaf10c14d196'
             'a93c298abdfab21d8050c38b0e9179081b1816f35084bc3f21007fe9f122e8d0')

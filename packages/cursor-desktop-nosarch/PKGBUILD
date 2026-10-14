@@ -4,8 +4,8 @@
 
 pkgname=cursor-desktop-nosarch
 pkgdesc="AI-First Coding environment"
-pkgver=3.24.12
-pkgrel=2
+pkgver=3.24.18
+pkgrel=1
 url="https://cursor.com"
 license=('LicenseRef-Cursor-EULA')
 
@@ -16,13 +16,13 @@ depends=('alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-lib
 options=('!strip' '!debug')
 provides=('cursor')
 conflicts=('cursor' 'cursor-bin' 'cursor-appimage' 'cursor-nosarch')
-_commit=37b865941ccb31e2fc90c685157534efca87f964
+_commit=be4c9e5350d77747b42cd467cbd3370a753d464b
 source=(
     "$pkgname-$pkgver.deb::https://downloads.cursor.com/production/$_commit/linux/x64/deb/amd64/deb/cursor_${pkgver}_amd64.deb"
     "cursor-agent-no-selfinstall.patch"
 )
-sha256sums=('880b5b69cd6cd79df4b81a778ea1f3429aaf775e771aab6c19c688de16a275f4'
-            'fd87fda0714161b6029ca001b6add364d7f1d39c4792e60359985036b4b65017')
+sha256sums=('251f2172bbdb124f2c9a2e93903580a6db98d266a4f42c40a79a50a3fa067e77'
+            '66542723a9f39f68da64610cc895a54d9f4a59175b86e05b0ae2048661ffbb29')
 
 package() {
     # Unpack the Debian payload with libarchive (pacman's own dependency; reads .xz natively), preserving upstream's

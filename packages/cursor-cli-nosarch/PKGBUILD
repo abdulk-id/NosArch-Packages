@@ -4,8 +4,8 @@
 
 pkgname=cursor-cli-nosarch
 pkgdesc="Cursor Agent - Cursor's terminal-based AI coding agent"
-pkgver=2026.10.01.e373342
-pkgrel=4
+pkgver=2026.10.14.0f9edde
+pkgrel=1
 url="https://cursor.com/cli"
 license=('LicenseRef-Cursor-EULA')
 
