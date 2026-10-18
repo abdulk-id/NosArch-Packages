@@ -10,6 +10,11 @@ Anything a `package()` function needs alongside the PKGBUILD ships in that direc
 The `-nosarch` suffix on every `pkgname` is deliberate. AUR helpers key off the name, so a package named `cursor`
 would be recognized as the AUR's and could be replaced by it.
 
+Packages that exist here to keep the AUR out have the same problem in reverse: the upstream name is already taken in
+the AUR. `yay-nosarch` builds upstream's `yay`, so declare the upstream name in both `provides` and `conflicts`.
+`provides` lets another AUR helper resolve `yay` to `yay-nosarch` instead of reaching for the AUR, and `conflicts`
+stops the AUR's `yay` from being installed beside it.
+
 ---
 
 ## Upstream Directives

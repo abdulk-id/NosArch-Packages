@@ -5,6 +5,10 @@ PKGBUILDs for [NosArch](https://github.com/abdulk-id/NosArch)'s custom packages.
 Custom packages let NosArch install an app as a pacman package. This covers apps with no Arch package, such as
 AppImages, `curl https://... | bash` installers, and vendor tarballs.
 
+A custom package is also how NosArch avoids the AUR. NosArch is moving its AUR dependencies into this repo, one package
+at a time, until nothing it needs comes from the AUR anymore. `yay` is one of those: a core NosArch package that has no
+Arch repository entry, so it is built here as `yay-nosarch` instead of being pulled from the AUR.
+
 [PACKAGES.md](PACKAGES.md) documents how to add a package, how versions are tracked, and the traps worth knowing
 before writing a PKGBUILD.
 
