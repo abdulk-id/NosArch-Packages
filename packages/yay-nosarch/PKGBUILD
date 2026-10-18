@@ -1,0 +1,46 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: github Jguer/yay
+
+pkgname=yay-nosarch
+pkgdesc="Yet another yogurt. Pacman wrapper and AUR helper written in go"
+pkgver=13.0.1
+pkgrel=1
+url="https://github.com/Jguer/yay"
+license=('GPL-3.0-or-later')
+
+arch=('x86_64')
+# libalpm is dlopen'd at runtime, so namcap cannot see that pacman is a hard requirement.
+depends=('git' 'glibc' 'pacman>6.1')
+optdepends=(
+    'sudo: privilege elevation'
+    'doas: privilege elevation'
+)
+options=('!strip' '!debug')
+provides=('yay')
+conflicts=('yay' 'yay-bin' 'yay-git')
+source=(
+    "$pkgname-$pkgver.tar.gz::https://github.com/Jguer/yay/releases/download/v$pkgver/yay_${pkgver}_x86_64.tar.gz"
+    "LICENSE::https://raw.githubusercontent.com/Jguer/yay/v$pkgver/LICENSE"
+)
+sha256sums=('1fdfcb5f7f387bc858d3a5754bdf4e4575bfbddac9560535a716d0ed7189c057'
+            '589ed823e9a84c56feb95ac58e7cf384626b9cbf4fda2a907bc36e103de1bad2')
+
+package() {
+    install -Dm755 "$srcdir/yay_${pkgver}_x86_64/yay" "$pkgdir/opt/$pkgname/yay"
+
+    install -d "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/yay" "$pkgdir/usr/bin/yay"
+
+    install -Dm644 "$srcdir/yay_${pkgver}_x86_64/bash" "$pkgdir/usr/share/bash-completion/completions/yay"
+    install -Dm644 "$srcdir/yay_${pkgver}_x86_64/zsh" "$pkgdir/usr/share/zsh/site-functions/_yay"
+    install -Dm644 "$srcdir/yay_${pkgver}_x86_64/fish" "$pkgdir/usr/share/fish/vendor_completions.d/yay.fish"
+
+    install -Dm644 "$srcdir/yay_${pkgver}_x86_64/yay.8" "$pkgdir/usr/share/man/man8/yay.8"
+
+    for translation in "$srcdir/yay_${pkgver}_x86_64/"*.mo; do
+        install -Dm644 "$translation" "$pkgdir/usr/share/locale/${translation##*/}"
+    done
+
+    install -Dm644 "$srcdir/LICENSE" "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+}
