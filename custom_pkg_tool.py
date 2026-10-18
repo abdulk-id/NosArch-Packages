@@ -50,6 +50,7 @@ import subprocess
 import sys
 import tempfile
 import threading
+import time
 import urllib.error
 from urllib.parse import urljoin, urlparse
 from concurrent.futures import ThreadPoolExecutor
@@ -87,6 +88,11 @@ REQUIRED_FIELDS: tuple[str, ...] = ("pkgdesc", "url", "license", "arch")
 
 # namcap rules that cannot be satisfied by a repackaged vendor binary: every one of them reports a property of an
 # upstream ELF we do not compile and cannot change. Rule names come from `namcap --list`.
+# Big vendored payloads (Electron debs unpack to 1.5 GiB+, and srcdir, pkgdir and the compressed package coexist at
+# peak) exhaust both the tmpfs on /tmp and this repo's filesystem quota mid-extraction, so the build scratch lives on
+# the roomy, disk-backed /var/tmp instead of in a default tempdir.
+SCRATCH_DIR = "/var/tmp"
+
 NAMCAP_EXCLUDED_RULES: tuple[str, ...] = (
     "elfpaths",  # the payload lives under /opt by design
     "elfunstripped",
@@ -179,7 +185,7 @@ def _buildable_copy(package_dir: Path) -> Iterator[Path]:
         yield package_dir
         return
 
-    with tempfile.TemporaryDirectory(prefix="nosarch-pkg-tool-src-") as tmpdir:
+    with tempfile.TemporaryDirectory(prefix="nosarch-pkg-tool-src-", dir=SCRATCH_DIR) as tmpdir:
         shutil.copytree(package_dir, tmpdir, dirs_exist_ok=True)
 
         mode = 0o777
@@ -189,6 +195,32 @@ def _buildable_copy(package_dir: Path) -> Iterator[Path]:
         os.chmod(tmpdir, mode)
 
         yield Path(tmpdir)
+
+
+def sweep_scratch(min_age_s: float = 60 * 60 * 24) -> list[str]:
+    """Removes this tool's leftover scratch directories under SCRATCH_DIR, self-healing after a killed run.
+
+    Normal runs delete their scratch through context managers even when a build fails, so anything left behind
+    means the process was killed mid-build (`/var/tmp` is not auto-cleaned at reboot). Only directories that
+    have been untouched for a day are removed, so a concurrent run can never lose its live scratch.
+    """
+    if not os.path.isdir(SCRATCH_DIR):
+        return []
+
+    removed: list[str] = []
+    now: float = time.time()
+
+    for entry in Path(SCRATCH_DIR).glob("nosarch-pkg-tool-*"):
+        try:
+            stale: bool = now - entry.lstat().st_mtime >= min_age_s
+        except FileNotFoundError:
+            continue  # a concurrent invocation swept it first
+
+        if stale and entry.is_dir():
+            shutil.rmtree(entry, ignore_errors=True)
+            removed.append(str(entry))
+
+    return removed
 
 
 def package_dirs(only: list[str]) -> list[Path]:
@@ -539,7 +571,7 @@ def build_and_audit(package_dir: Path, quiet: bool = False) -> list[str]:
 
     with (
         _buildable_copy(package_dir) as build_dir,
-        tempfile.TemporaryDirectory(prefix="nosarch-pkg-tool-out-") as scratch,
+        tempfile.TemporaryDirectory(prefix="nosarch-pkg-tool-out-", dir=SCRATCH_DIR) as scratch,
     ):
         # `nobody` needs write access to wherever the build writes output, same as the source copy above.
         if _running_as_root():
@@ -551,7 +583,15 @@ def build_and_audit(package_dir: Path, quiet: bool = False) -> list[str]:
             capture_output=True,
             text=True,
             check=False,
-            env={"PKGDEST": scratch, "SRCDEST": scratch, "BUILDDIR": scratch, "PATH": "/usr/bin", "HOME": scratch},
+            env={
+                # Point temp-creating tools at /var/tmp as well, so heavy temps never land on the tmpfs.
+                "PKGDEST": scratch,
+                "SRCDEST": scratch,
+                "BUILDDIR": scratch,
+                "TMPDIR": "/var/tmp",
+                "PATH": "/usr/bin",
+                "HOME": scratch,
+            },
             preexec_fn=_drop_to_nobody if _running_as_root() else None,
         )
 
@@ -1206,6 +1246,11 @@ def main() -> int:
     )
 
     args: argparse.Namespace = parser.parse_args()
+
+    swept: list[str] = sweep_scratch()
+
+    if swept and not args.quiet:
+        print(f"[SCRATCH] Removed {len(swept)} leftover scratch directory(ies) under {SCRATCH_DIR}.")
 
     if args.command == "validate":
         return cmd_validate(args)
