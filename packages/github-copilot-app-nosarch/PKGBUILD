@@ -4,8 +4,8 @@
 
 pkgname=github-copilot-app-nosarch
 pkgdesc="Agent-native desktop app for finding, running, steering and landing work on GitHub"
-pkgver=1.1.29
-pkgrel=2
+pkgver=1.1.30
+pkgrel=1
 url="https://github.com/github/app"
 license=('LicenseRef-GitHub-Copilot-App')
 
@@ -19,7 +19,7 @@ source=(
     "License.md::https://raw.githubusercontent.com/github/app/v$pkgver/License.md"
 )
 sha256sums=(
-    '22abda15e198d810cf1a582f4184db43620dc45a93733574d4f02f008dd3a370'
+    '68a2e3ef230caca48e60c9bebd60b432fd70eb7a45291fce2340758a586682a3'
     'eabc2f07ec11338d4c6bd732b5975798ca98b3dd50abf6c520f2dc54215bc7d7'
 )
 

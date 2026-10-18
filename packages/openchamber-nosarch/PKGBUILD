@@ -4,8 +4,8 @@
 
 pkgname=openchamber-nosarch
 pkgdesc="Open-source workspace for running and reviewing AI coding agents"
-pkgver=2.3.2
-pkgrel=2
+pkgver=2.4.0
+pkgrel=1
 url="https://openchamber.dev"
 license=('MIT')
 
@@ -19,7 +19,7 @@ source=(
     "LICENSE::https://raw.githubusercontent.com/openchamber/openchamber/v$pkgver/LICENSE"
 )
 sha256sums=(
-    '65eed3a5d671bd25ff33fc85d7beba05f1254bc5ca4315856cb8e7ff41570d87'
+    '2a80eba2641ddf8258911d5ce2c77a812c5ced3e1efee529691b318945ab394e'
     '1f6e869a3feff6b4eb07907afc89176562b1f4324389f163d9fd94f09864b44e'
 )
 

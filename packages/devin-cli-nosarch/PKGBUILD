@@ -4,8 +4,8 @@
 
 pkgname=devin-cli-nosarch
 pkgdesc="Command-line interface for Devin, Cognition's AI software engineer"
-pkgver=3000.11.3
-pkgrel=3
+pkgver=3000.11.92
+pkgrel=1
 url="https://devin.ai/cli"
 license=('LicenseRef-Devin-CLI')
 
@@ -26,7 +26,7 @@ source=(
     "distribution"
     "LICENSE-README"
 )
-sha256sums=('83b3b113c01bf2a3e9e100db08d77e6b086806a7754f091e20831bdfe215157e'
+sha256sums=('2d829139682e038cf122510f1170eee3d7060bcc7ebf92445cbc5d28c9fbcfa0'
             '00cca6838d84bc2f685656fea4834b8636939c478db03d3f25d62be9b5148015'
             '1627d4ffbdaec9053a7e0ed5f756294ceb1bb30f61e6fecc48fbc110a9b01d31'
             '6b7863bf7e08af71193495d790ea7a9c8e59c8d0ad1bdad744975096311a0064')

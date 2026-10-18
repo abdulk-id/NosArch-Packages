@@ -4,13 +4,13 @@
 
 pkgname=cursor-cli-nosarch
 pkgdesc="Cursor Agent - Cursor's terminal-based AI coding agent"
-pkgver=2026.10.14.0f9edde
-pkgrel=2
+pkgver=2026.10.16.e3cb207
+pkgrel=1
 url="https://cursor.com/cli"
 license=('LicenseRef-Cursor-EULA')
 
 arch=('x86_64')
-depends=('bash' 'gcc-libs' 'glibc' 'zlib')
+depends=('bash' 'gcc-libs' 'glibc' 'nodejs' 'zlib')
 options=('!strip' '!debug')
 provides=('cursor-cli')
 conflicts=('cursor-cli')
@@ -23,7 +23,7 @@ source=(
     "pin-channel.js"
     "cursor-agent-wrapper.sh"
 )
-sha256sums=('74fac931fe3578980d070701872b7dab54eb87a9abf9b6e2e6be19beeb9167a7'
+sha256sums=('3aa3f48cd7a3909a98c9b3f2a4085f0c021088bf826690b22c61f424c843e552'
             '47ce687589fa92af3070251288cfdac9b2ec8637e16744a4acbf2d348508ffe5'
             '5206537ce6dbaad893a8b6766a2ed05781161b2bd1363ee59b9eb63ef5bc4b37'
             '62767b62612cb4a020159a20d6061c6ae71b3fe3c15d1d979f19beedc611edf1')

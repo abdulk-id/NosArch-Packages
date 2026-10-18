@@ -4,7 +4,7 @@
 
 pkgname=github-copilot-cli-nosarch
 pkgdesc="GitHub Copilot CLI - Copilot coding agent in your terminal"
-pkgver=1.0.97
+pkgver=1.0.98
 pkgrel=1
 url="https://github.com/github/copilot-cli"
 license=('LicenseRef-GitHub-Copilot-CLI')
@@ -19,7 +19,7 @@ source=(
     "LICENSE.md::https://raw.githubusercontent.com/github/copilot-cli/v$pkgver/LICENSE.md"
     "copilot-wrapper.sh"
 )
-sha256sums=('07f3f63cb361e911268e8a4b010e06eeced8d4f2d898d13a8180273e34aeff3f'
+sha256sums=('87ddb4b3f98462b7cb13c0a6857c68ee410ec9673e2e5f64ee5bedad45825b05'
             'c694e2d9b3f3bb40704ca9bdc823dc90269999ab4c013dfd8a52c407046074b4'
             '08d1592317ca3586295353075164f52ad42a2dea781e891d3053dcc2da20958c')
 
