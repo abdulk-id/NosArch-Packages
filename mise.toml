@@ -2,6 +2,10 @@
 description = "Validate all custom packages"
 run = "python3 custom_pkg_tool.py validate"
 
+[tasks.pkgbldchk]
+description = "Build and validate all custom packages (checks `depends`)"
+run = "python3 custom_pkg_tool.py validate --build"
+
 [tasks.pkgref]
 description = "Refresh custom packages"
 run = "python3 custom_pkg_tool.py refresh"
