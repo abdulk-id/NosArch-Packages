@@ -4,7 +4,7 @@
 
 pkgname=cursor-desktop-nosarch
 pkgdesc="AI-First Coding environment"
-pkgver=3.25.6
+pkgver=3.25.9
 pkgrel=1
 url="https://cursor.com"
 license=('LicenseRef-Cursor-EULA')
@@ -12,16 +12,16 @@ license=('LicenseRef-Cursor-EULA')
 arch=('x86_64')
 depends=('alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-libs' 'glib2' 'gtk3'
          'libxcb' 'libx11' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon'
-         'libxkbfile' 'libxrandr' 'mesa' 'nspr' 'nss' 'pango' 'systemd-libs' 'xdg-utils')
+         'libxkbfile' 'libxrandr' 'mesa' 'nodejs' 'nspr' 'nss' 'pango' 'systemd-libs' 'xdg-utils')
 options=('!strip' '!debug')
 provides=('cursor')
 conflicts=('cursor' 'cursor-bin' 'cursor-appimage' 'cursor-nosarch')
-_commit=f0df777c412b670d09e3eaf214967d779e67c088
+_commit=5d4df965746c5d09740842fc0f1331ba1c15783d
 source=(
     "$pkgname-$pkgver.deb::https://downloads.cursor.com/production/$_commit/linux/x64/deb/amd64/deb/cursor_${pkgver}_amd64.deb"
     "cursor-agent-no-selfinstall.patch"
 )
-sha256sums=('2b64b908214a8fa47e09303de80d8a25d78702216e2f765dcac73f8ae9c1ee15'
+sha256sums=('d5693eb26a0acd3fbea3b9cbc31d1e5659edc8d8804c98935d7ededba69b5acb'
             '66542723a9f39f68da64610cc895a54d9f4a59175b86e05b0ae2048661ffbb29')
 
 package() {

@@ -4,7 +4,7 @@
 
 pkgname=antigravity-cli-nosarch
 pkgdesc="Antigravity CLI - Google's terminal AI coding agent"
-pkgver=1.4.1
+pkgver=1.4.2
 pkgrel=1
 url="https://antigravity.google/product/antigravity-cli"
 license=('LicenseRef-Antigravity-CLI')
@@ -20,7 +20,7 @@ source=(
     "LICENSE"
     "agy-wrapper.sh"
 )
-sha256sums=('e165aa7bccbd1c43e3db4a89f499b6bcf32598ce59b1de6184188cdec4418dab'
+sha256sums=('6395837ac0e193dd3fe50f1228e1c4aea345ca99636d54404ab7e74397d4091c'
             '4eec67c0a77ba5d8a696a52d76db8c05a7d265d03cf2ea63fc089187079989bc'
             'e014da596840c410830661bddc51a9b35eac1a39e8ff20769dc61037b8937734')
 
