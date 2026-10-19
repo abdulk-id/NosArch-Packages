@@ -5,13 +5,13 @@
 pkgname=t3code-cli-nosarch
 pkgdesc="Run the T3 Code server and web client"
 pkgver=0.1.0
-pkgrel=1
+pkgrel=2
 url="https://t3.codes"
 license=('MIT')
 
 arch=('x86_64')
 # shadow: runuser in the libalpm hook helper
-depends=('bash' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'shadow')
+depends=('bash' 'gcc-libs' 'glibc' 'hicolor-icon-theme' 'nodejs' 'shadow')
 options=('!strip' '!debug')
 source=(
     "$pkgname-$pkgver.tar.gz::https://github.com/pingdotgg/t3code/releases/download/v$pkgver/t3-$pkgver-linux-x64.tar.gz"
