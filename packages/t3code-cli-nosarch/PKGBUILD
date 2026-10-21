@@ -4,8 +4,8 @@
 
 pkgname=t3code-cli-nosarch
 pkgdesc="Run the T3 Code server and web client"
-pkgver=0.1.0
-pkgrel=2
+pkgver=0.1.1
+pkgrel=1
 url="https://t3.codes"
 license=('MIT')
 
@@ -23,7 +23,7 @@ source=(
     "60-t3code-cli-nosarch-service-remove.hook"
     "t3code-server.desktop"
 )
-sha256sums=('f7703ff1bb8f6243580058b3ccf2c02abb62eba4b991e26bbb1da22f4b56d9b1'
+sha256sums=('33c43ea2f803215662f5a31fdf9e1bca86ab67cac4f2398565c2ba12e17c2185'
             '935d8f2af0c703f9c39517ee57cc4930b19d02d533be930b63f0e82f93614b43'
             'a3921bf3eaa3b2c1aef53c10c1cef3e36371cf202e5acd1d91f00191cc937a32'
             'a3f7381997cd13301675556995f2f00d36bd47fe17bd76b267c43950ad062331'

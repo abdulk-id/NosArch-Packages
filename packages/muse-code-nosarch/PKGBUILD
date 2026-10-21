@@ -4,7 +4,7 @@
 
 pkgname=muse-code-nosarch
 pkgdesc="Muse Code - Meta's terminal-based AI coding agent"
-pkgver=1.4.10.R6427.1
+pkgver=1.4.11.R6667.1
 pkgrel=1
 url="https://dev.meta.ai/products/muse-code"
 license=('LicenseRef-Muse-Code')
@@ -27,7 +27,7 @@ source=(
     "LICENSE-README"
 )
 sha256sums=(
-    'decefc0fb33c48ee43419c3e72ac2dbc781743868611074c7292807f5960dfcf'
+    '6fda12a6a4f236528dafa707384cf6395fe859b1438ef77c7be26ed9d7976839'
     '5c4f8cfa1fb7f735e79ffe10bf07672b95fcfe648747bad6a902ecb56f598372'
 )
 

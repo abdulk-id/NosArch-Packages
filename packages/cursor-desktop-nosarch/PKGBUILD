@@ -4,7 +4,7 @@
 
 pkgname=cursor-desktop-nosarch
 pkgdesc="AI-First Coding environment"
-pkgver=3.25.9
+pkgver=3.26.13
 pkgrel=1
 url="https://cursor.com"
 license=('LicenseRef-Cursor-EULA')
@@ -16,12 +16,12 @@ depends=('alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-lib
 options=('!strip' '!debug')
 provides=('cursor')
 conflicts=('cursor' 'cursor-bin' 'cursor-appimage' 'cursor-nosarch')
-_commit=5d4df965746c5d09740842fc0f1331ba1c15783d
+_commit=3bfec373749d3d4a53a151283022d49743ab50ba
 source=(
     "$pkgname-$pkgver.deb::https://downloads.cursor.com/production/$_commit/linux/x64/deb/amd64/deb/cursor_${pkgver}_amd64.deb"
     "cursor-agent-no-selfinstall.patch"
 )
-sha256sums=('d5693eb26a0acd3fbea3b9cbc31d1e5659edc8d8804c98935d7ededba69b5acb'
+sha256sums=('98580b1b8763847522171814cfd1efaa866915d09370197d65f477384aec4aae'
             '66542723a9f39f68da64610cc895a54d9f4a59175b86e05b0ae2048661ffbb29')
 
 package() {
