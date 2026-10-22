@@ -1,0 +1,58 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: regex https://persistent.oaistatic.com/codex-app-prod/linux/deb/dists/stable/main/binary-amd64/Packages Version: ([0-9.]+)
+#
+# regex directive used because the link has just text; it is not a webpage for a browser
+
+pkgname=chatgpt-desktop-nosarch
+pkgdesc="ChatGPT by OpenAI"
+pkgver=26.1016.61520
+pkgrel=1
+url="https://developers.openai.com/codex/app"
+license=('LicenseRef-ChatGPT')
+
+arch=('x86_64' 'aarch64')
+backup=('etc/apparmor.d/chatgpt')
+depends=('alsa-lib' 'at-spi2-core' 'atk' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-libs'
+         'gdk-pixbuf2' 'glib2' 'glibc' 'gtk3' 'libcups' 'libgcc' 'libglvnd' 'libnotify' 'libpulse'
+         'libsecret' 'libstdc++' 'libusb' 'libx11' 'libxcb' 'libxcomposite' 'libxdamage' 'libxext'
+         'libxfixes' 'libxkbcommon' 'libxrandr' 'libxss' 'mesa' 'nodejs' 'nspr' 'nss' 'openssl'
+         'pango' 'qt5-base' 'qt6-base' 'systemd-libs' 'tpm2-tss' 'vulkan-icd-loader' 'xdg-utils' 'xz')
+options=('!strip' '!debug')
+optdepends=('apparmor: automatically load the bundled profile for Chromium user namespaces'
+            'git: enable Git repository integration'
+            'gtk4: use the GTK 4 backend with --gtk-version=4'
+            'kde-cli-tools: move deleted files to the Plasma trash through kioclient'
+            'org.freedesktop.secrets: securely store credentials with a Secret Service backend'
+            'pipewire: enable WebRTC screen sharing under Wayland')
+provides=('chatgpt' 'chatgpt-desktop')
+conflicts=('chatgpt' 'chatgpt-bin' 'chatgpt-desktop' 'chatgpt-desktop-bin')
+noextract=("$pkgname-$pkgver-x86_64.deb" "$pkgname-$pkgver-aarch64.deb")
+source_x86_64=(
+    "$pkgname-$pkgver-x86_64.deb::https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_${pkgver}_amd64.deb"
+)
+source_aarch64=(
+    "$pkgname-$pkgver-aarch64.deb::https://persistent.oaistatic.com/codex-app-prod/linux/deb/pool/main/c/chatgpt/chatgpt_${pkgver}_arm64.deb"
+)
+sha256sums_x86_64=('9add622916c5fa3861afd95081af77e25488c108ca9c543e1f67560b390d28d4')
+sha256sums_aarch64=('c5498348581f7607102ac6f206c9f87668cce36c8c7dbb4c0209e25cd8a60b11')
+
+package() {
+    # Unpack the Debian payload with libarchive, preserving upstream's FHS layout.
+    bsdtar -xOf "${srcdir}/${pkgname}-${pkgver}-${CARCH}.deb" data.tar.xz |
+        bsdtar --no-same-owner -xJf - -C "${pkgdir}"
+
+    # Align metainfo with the packaged name.
+    if [[ -f "${pkgdir}/usr/share/metainfo/com.openai.chatgpt.metainfo.xml" ]]; then
+        sed -i "s|<pkgname>chatgpt</pkgname>|<pkgname>${pkgname}</pkgname>|" \
+            "${pkgdir}/usr/share/metainfo/com.openai.chatgpt.metainfo.xml"
+    fi
+
+    install -Dm644 "${pkgdir}/usr/share/doc/chatgpt/copyright" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/copyright" 2>/dev/null || true
+    install -Dm644 "${pkgdir}/usr/lib/chatgpt/resources/THIRD_PARTY_NOTICES.txt" \
+        "${pkgdir}/usr/share/licenses/${pkgname}/THIRD_PARTY_NOTICES.txt"
+    ln -sf /usr/lib/chatgpt/LICENSES.chromium.html "${pkgdir}/usr/share/licenses/${pkgname}/LICENSES.chromium.html"
+
+    rm -rf "${pkgdir}/usr/share/doc" "${pkgdir}/usr/share/lintian"
+}
