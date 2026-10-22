@@ -4,7 +4,7 @@
 
 pkgname=grok-build-nosarch
 pkgdesc="Grok Build - xAI's terminal-based AI coding agent"
-pkgver=1.0.62
+pkgver=1.0.67
 pkgrel=1
 url="https://x.ai/cli"
 license=('Apache-2.0')
@@ -20,7 +20,7 @@ source=(
     "LICENSE::https://raw.githubusercontent.com/xai-org/grok-build/main/LICENSE"
 )
 sha256sums=(
-    '2a46d9e4d7ebd7a9cff7f95716714b19dad5f21dd2a497822400b1fb128969aa'
+    'ce33b1a29e37901f56fe59916cda7a1149e6fd377118f918e90d89f9abb52a51'
     '116f7778b9802e569b7fa3a532b17bd80eb13c67837def01eed093d4ea472f28'
 )
 

@@ -4,7 +4,7 @@
 
 pkgname=claude-code-nosarch
 pkgdesc="Claude Code - Anthropic's agentic coding tool for the terminal"
-pkgver=2.1.306
+pkgver=2.1.308
 pkgrel=1
 url="https://code.claude.com/docs/en/overview"
 license=('LicenseRef-Anthropic-Commercial-TOS')
@@ -19,7 +19,7 @@ source=(
     "LICENSE.md::https://raw.githubusercontent.com/anthropics/claude-code/v$pkgver/LICENSE.md"
     "claude-wrapper.sh"
 )
-sha256sums=('9dc640d16d8228eff9620bde9e0f70d38385a2124f4e7d0a959d0337f0e4b14a'
+sha256sums=('6a699c7205d3c5f99e03a21d6b0511366f41c9a7284547b6e0785504ebdb261a'
             '728158fd1037143fad6907e8fa34804177e598b7326519503fe83cafdef849e6'
             '94381829093f800d88686fc7d3cbee22de931ac7c2b17dceca3e8f7bf1750c63')
 
