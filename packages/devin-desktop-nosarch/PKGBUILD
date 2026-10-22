@@ -1,0 +1,45 @@
+# Maintainer: NosArch
+#
+# nosarch-upstream: json https://windsurf-stable.codeium.com/api/update/linux-x64/stable/latest windsurfVersion
+
+pkgname=devin-desktop-nosarch
+pkgdesc="Desktop application for Devin, Cognition's AI software engineer"
+pkgver=3.10.67
+pkgrel=1
+url="https://devin.ai"
+license=('MIT')
+
+arch=('x86_64')
+depends=('alsa-lib' 'at-spi2-core' 'bash' 'cairo' 'cups' 'dbus' 'expat' 'gcc-libs' 'glib2' 'gtk3'
+         'hicolor-icon-theme' 'libdrm' 'libnotify' 'libsecret' 'libxkbfile' 'libxcb' 'libx11'
+         'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon' 'libxrandr' 'mesa'
+         'nodejs' 'nspr' 'nss' 'pango' 'perl' 'systemd-libs' 'xdg-utils')
+options=('!strip' '!debug')
+provides=('devin-desktop')
+conflicts=('devin-desktop' 'devin-desktop-bin')
+_commit=0b186d6e13a1a48a46430c51fe414dd0747d46f6
+source=(
+    "$pkgname-$pkgver.tar.gz::https://windsurf-stable.codeiumdata.com/linux-x64/stable/$_commit/Devin-linux-x64-$pkgver.tar.gz"
+)
+sha256sums=('3295f8bdfb460180a7e96961c0a6156f108b6502684287f17b8b512246c35803')
+
+package() {
+    install -d "$pkgdir/opt/$pkgname"
+    cp -a --no-preserve=ownership "$srcdir/Devin/." "$pkgdir/opt/$pkgname/"
+
+    install -d "$pkgdir/usr/bin"
+    ln -s "/opt/$pkgname/devin-desktop" "$pkgdir/usr/bin/devin-desktop"
+
+    install -Dm644 /dev/stdin "$pkgdir/usr/share/applications/devin-desktop.desktop" <<'EOF'
+[Desktop Entry]
+Name=Devin
+Comment=Devin desktop application
+Exec=devin-desktop %U
+Icon=devin-desktop
+Type=Application
+Categories=Development;IDE;
+StartupWMClass=Devin
+EOF
+
+    install -Dm644 "$srcdir/Devin/LICENSES.chromium.html" "$pkgdir/usr/share/licenses/$pkgname/LICENSES.chromium.html"
+}
