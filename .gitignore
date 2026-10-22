@@ -1,2 +1,8 @@
 __pycache__
+
 *.tar.gz
+packages/*/src/
+packages/*/pkg/
+packages/*/*.pkg.tar*
+packages/*/*.tar.*
+packages/*/*.sig
